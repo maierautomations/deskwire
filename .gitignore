@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+
+# env files (contain secrets, never commit)
+.env
+.env.*
+!.env.example
+
+# next.js
+.next/
+out/
+
+# build output
+dist/
+
+# misc
+.DS_Store
+*.log
