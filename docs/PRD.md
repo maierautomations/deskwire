@@ -347,6 +347,7 @@ Fachliche Kerntabellen, alle mit `id`, `workspace_id`, `created_at`, `updated_at
 2. Auth-Strategie: Magic Link via Resend zuerst, OAuth später.
 3. Generisch bauen, vertikal vermarkten: Das Produkt bleibt branchenneutral, Landingpage und erste Design-Partner adressieren Fach- und Finanzmedien.
 4. Produktname und Domain bewusst vertagt bis zum stehenden MVP (M3/M4), Arbeitstitel bleibt Deskwire.
+5. Paketmanager: npm statt pnpm. Begründung: Vertrautheit und Standard-Tooling des Betreibers. Entschieden vor Task 1a (Phase 0).
 
 **Offen:**
 

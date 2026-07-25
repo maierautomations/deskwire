@@ -24,7 +24,7 @@ Aktuelle Phase: **Phase 0 (Foundation)**. Es wird nichts aus späteren Phasen vo
 - Sentry für Error-Tracking, ab Phase 0 verdrahtet
 - PostHog für Produkt-Analytics, Events ab Phase 1
 - Upstash Ratelimit für Rate Limiting öffentlicher und run-auslösender Endpoints
-- Vitest (Unit), Playwright (E2E), pnpm als Paketmanager
+- Vitest (Unit), Playwright (E2E), npm als Paketmanager
 
 Neue Dependencies nur nach Rückfrage mit Einzeiler-Begründung.
 
@@ -67,6 +67,7 @@ tests/              Unit- und E2E-Tests
 - Fehlerbehandlung: erwartbare Fehler als typisierte Ergebnisse zurückgeben, unerwartete werfen und zentral loggen. Nutzer sehen immer eine verständliche deutsche Fehlermeldung mit Handlungsoption.
 - Datenbank: Schemaänderungen nur über Drizzle-Migrations. Bestehende Migrationsdateien niemals editieren oder löschen. Vor destruktiven Migrationen stoppen und nachfragen.
 - Prompts sind Code: Sie liegen als Dateien unter `src/lib/ai/prompts/`, Änderungen laufen durch Git. Jeder Run speichert die Referenz der verwendeten Prompts (Dateipfad plus Inhalts-Hash). Kein Inline-Prompt-Text in Pipeline-Code.
+- UI-Arbeit liest zuerst docs/brand-book.md. Bei Konflikten gewinnt das Brand Book vor dem frontend-design-Skill, der Skill vor allgemeinen Vorlieben. Keine Farben, Schriften oder Motive außerhalb der Brand-Book-Tokens.
 - Naming: Code, Identifier, Commits und Code-Kommentare auf Englisch. UI-Texte und Nutzer-Fehlermeldungen auf Deutsch.
 - UI-Texte: echte deutsche Umlaute, keine Gedankenstriche (stattdessen Komma oder Punkt), Du-Ansprache, kurz und konkret.
 - Kein Datei-übergreifendes Copy-Paste von Logik: Wiederverwendbares gehört nach `src/lib/`.
@@ -74,7 +75,7 @@ tests/              Unit- und E2E-Tests
 ## Arbeitsweise
 
 - **Plan vor Code:** Bei jedem neuen Feature zuerst einen kurzen Plan (betroffene Dateien, Schema-Änderungen, Testansatz) zeigen und Bestätigung abwarten. Bugfixes und Kleinigkeiten direkt.
-- Kleine, in sich lauffähige Schritte. Nach jedem Schritt: `pnpm lint && pnpm typecheck && pnpm test` grün, sonst nicht weitermachen.
+- Kleine, in sich lauffähige Schritte. Nach jedem Schritt: `npm run lint && npm run typecheck && npm test` grün, sonst nicht weitermachen.
 - Tests sind Pflicht für: QA-Gates und Platzhalter-Logik, Status-Übergänge, Billing und Credit-Gates, Tenant-Isolation, Webhook-Signaturen. Zusätzlich laufen die Golden-Briefings (feste Test-Briefings mit automatisierter Prüfung auf Pflichtelemente, Platzhalter-Syntax und verbotene Muster) als Regressionstest nach jeder Pipeline- oder Prompt-Änderung. UI-Feinschliff braucht keine Tests.
 - Commits klein und beschreibend (Conventional Commits: feat, fix, chore, test, docs).
 
@@ -97,14 +98,14 @@ tests/              Unit- und E2E-Tests
 ## Kommandos (Soll, nach Setup anpassen)
 
 ```
-pnpm dev            # lokale Entwicklung
-pnpm lint           # ESLint
-pnpm typecheck      # tsc --noEmit
-pnpm test           # Vitest
-pnpm test:e2e       # Playwright
-pnpm db:generate    # Drizzle-Migration aus Schema erzeugen
-pnpm db:migrate     # Migrationen anwenden
-pnpm inngest:dev    # Inngest Dev Server
+npm run dev            # lokale Entwicklung
+npm run lint           # ESLint
+npm run typecheck      # tsc --noEmit
+npm test               # Vitest
+npm run db:generate    # Drizzle-Migration aus Schema erzeugen
+npm run db:migrate     # Migrationen anwenden
+npm run db:studio      # Drizzle Studio
+npm run inngest:dev    # Inngest Dev Server
 ```
 
 ## Stand
