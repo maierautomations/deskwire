@@ -71,6 +71,7 @@ tests/              Unit- und E2E-Tests
 - Naming: Code, Identifier, Commits und Code-Kommentare auf Englisch. UI-Texte und Nutzer-Fehlermeldungen auf Deutsch.
 - UI-Texte: echte deutsche Umlaute, keine Gedankenstriche (stattdessen Komma oder Punkt), Du-Ansprache, kurz und konkret.
 - Kein Datei-übergreifendes Copy-Paste von Logik: Wiederverwendbares gehört nach `src/lib/`.
+- Umgebung: Kein Homebrew, niemals. Tools werden ausschließlich über offizielle Installer, direkte Binary-Downloads (GitHub Releases), npm/npx oder Docker installiert. Schlage keine brew-Kommandos vor.
 
 ## Arbeitsweise
 
