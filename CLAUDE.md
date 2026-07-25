@@ -111,3 +111,4 @@ npm run inngest:dev    # Inngest Dev Server
 ## Stand
 
 - 24.07.2026: Projektstart. PRD v1 liegt in docs/PRD.md. Nächster Schritt: Phase 0 Scaffold (Repo, CI, Auth, Workspaces, Tenancy-Tests, Stripe-Testmode).
+- 25.07.2026: Task 1a fertig: Next.js-16-Scaffold (App Router, TS strict, Tailwind v4, ESLint 9 Flat Config), shadcn/ui (Preset radix-nova, Base Color neutral; button, input, card, label), Brand-Token-Fundament aus docs/brand-book.md Kap. 5 (Farb-Tokens, Typoskala, Radii in globals.css; Fonts Besley, Public Sans, IBM Plex Mono self-hosted via next/font; src/lib/brand.ts als Namens-Token). Node-Basis dokumentiert (.nvmrc 24, packageManager npm@11.16.0). Nächster Task: 1b (Vitest plus GitHub-Actions-CI).

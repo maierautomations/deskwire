@@ -1,0 +1,133 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens from docs/brand-book.md ch. 5. Raw color values exist only
+ * here; components use semantic utilities, never hex values or Tailwind
+ * palette colors. A dark mode is deliberately absent in phase 0 (brand
+ * book 5.2: derived from these tokens later, not the brand home).
+ */
+:root {
+  /* Palette (brand book 5.2) */
+  --paper: #f6f6f2;
+  --paper-raised: #ffffff;
+  --ink: #1c1c1a;
+  --ink-soft: #55544e;
+  --line: #dddcd4;
+  --rubric: #a8232d;
+  --rubric-deep: #7e1a22;
+  --status-ready: #1f6b4a;
+  --status-review: #8a5a14;
+  --status-error: #9a2b2b;
+  --status-online: #1e4e8c;
+
+  /* Radius base (brand book 5.4): 6px on cards and fields */
+  --radius: 6px;
+
+  /* shadcn semantics mapped onto brand tokens */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: var(--line);
+  --secondary-foreground: var(--ink);
+  --muted: var(--line);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--line);
+  --accent-foreground: var(--ink);
+  --destructive: var(--status-error);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--ink);
+}
+
+@theme inline {
+  /* Brand utilities: bg-paper, text-ink, text-rubric, bg-status-ready, ... */
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-rubric: var(--rubric);
+  --color-rubric-deep: var(--rubric-deep);
+  --color-status-ready: var(--status-ready);
+  --color-status-review: var(--status-review);
+  --color-status-error: var(--status-error);
+  --color-status-online: var(--status-online);
+
+  /* shadcn semantic utilities */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Fonts (brand book 5.3): Besley display, Public Sans body, Plex Mono machine voice */
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-heading: var(--font-display);
+  --font-mono: var(--font-mono);
+
+  /* Type scale (brand book 5.3): 13 / 15 / 16 / 19 / 24 / 32 / 44 / 60 */
+  --text-*: initial;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 2rem;
+  --text-2xl: 2rem;
+  --text-2xl--line-height: 2.5rem;
+  --text-2xl--letter-spacing: -0.01em;
+  --text-3xl: 2.75rem;
+  --text-3xl--line-height: 1.1;
+  --text-3xl--letter-spacing: -0.015em;
+  --text-4xl: 3.75rem;
+  --text-4xl--line-height: 1.05;
+  --text-4xl--letter-spacing: -0.02em;
+
+  /* Radii (brand book 5.4): 6px cards and fields, 3px badges, nothing larger */
+  --radius-sm: 3px;
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
+  --radius-3xl: var(--radius);
+  --radius-4xl: var(--radius);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
