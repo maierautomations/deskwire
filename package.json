@@ -21,7 +21,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "0.45.2",
     "lucide-react": "^1.26.0",
-    "next": "16.2.11",
+    "next": "16.2.12",
     "radix-ui": "^1.6.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -42,7 +42,7 @@
     "dotenv": "17.4.2",
     "drizzle-kit": "0.31.10",
     "eslint": "^9",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"
