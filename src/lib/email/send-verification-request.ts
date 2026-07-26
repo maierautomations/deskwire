@@ -1,8 +1,11 @@
 import * as Sentry from "@sentry/nextjs";
+import { AuthError } from "next-auth";
 import type { EmailConfig } from "next-auth/providers";
 
-// Minimal German text-only magic-link mail (task 7a). Task 7b turns this
-// into a proper HTML+text template with unit tests and a dev-log mode.
+import { shouldUseDevLog } from "@/lib/email/dev-log";
+import { magicLinkEmail } from "@/lib/email/magic-link-template";
+
+// German magic-link mail (HTML + text, task 7b).
 //
 // Fail-closed: every failure throws, so Auth.js surfaces an error page
 // instead of pretending the mail went out. Sentry only records failures we
@@ -12,6 +15,18 @@ import type { EmailConfig } from "next-auth/providers";
 // event, otherwise a handful of foreign requests drains the Sentry quota.
 // Real rate limiting for this path lands in task 9.
 
+// Thrown for every failed send. `static type = "AccessDenied"` deliberately
+// reuses the only client-safe Auth.js error type whose semantics fit ("the
+// sign-in attempt was refused, nothing happened"): client-safe types survive
+// the redirect to the error page as ?error=AccessDenied, everything else
+// collapses to the indistinct "Configuration". This lets the German error
+// page explain the actual cause (brand book 4.3 rule 4). The only other
+// source of AccessDenied is a signIn callback, which this app does not
+// define; tests/auth/auth-config.test.ts enforces that assumption.
+export class MagicLinkSendError extends AuthError {
+  static type = "AccessDenied";
+}
+
 type SendVerificationRequestParams = Parameters<
   EmailConfig["sendVerificationRequest"]
 >[0];
@@ -20,14 +35,27 @@ export async function sendVerificationRequest(
   params: SendVerificationRequestParams,
 ): Promise<void> {
   const { identifier, url, provider } = params;
+
+  if (shouldUseDevLog(process.env)) {
+    // Unambiguously local (enforced in shouldUseDevLog): print the working
+    // magic link instead of sending, to test second users despite the
+    // Resend sandbox.
+    console.log(`[auth][dev-log] Magic link for ${identifier}:\n${url}`);
+    return;
+  }
+
   const { apiKey, from } = provider;
 
   if (!apiKey || !from) {
     // Config error on our side, never triggerable from the outside.
-    const error = new Error("Resend provider is missing apiKey or from");
+    const error = new MagicLinkSendError(
+      "Resend provider is missing apiKey or from",
+    );
     Sentry.captureException(error);
     throw error;
   }
+
+  const { subject, text, html } = magicLinkEmail({ url });
 
   let res: Response;
   try {
@@ -37,26 +65,13 @@ export async function sendVerificationRequest(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from,
-        to: identifier,
-        subject: "Dein Anmeldelink für Deskwire",
-        text: [
-          "Hallo,",
-          "",
-          "klicke auf diesen Link, um dich bei Deskwire anzumelden:",
-          "",
-          url,
-          "",
-          "Der Link ist 24 Stunden gültig und kann nur einmal verwendet werden.",
-          "",
-          "Wenn du diese Anmeldung nicht angefordert hast, kannst du diese E-Mail einfach ignorieren.",
-        ].join("\n"),
-      }),
+      body: JSON.stringify({ from, to: identifier, subject, text, html }),
     });
   } catch (error) {
     Sentry.captureException(error);
-    throw new Error("Verification email could not be sent: network error");
+    throw new MagicLinkSendError(
+      "Verification email could not be sent: network error",
+    );
   }
 
   if (res.ok) {
@@ -67,7 +82,7 @@ export async function sendVerificationRequest(
   // Every other 4xx is an expected rejection; the error message stays free
   // of the recipient address so downstream logs contain no PII.
   const isOurFailure = res.status === 401 || res.status >= 500;
-  const error = new Error(
+  const error = new MagicLinkSendError(
     `Verification email rejected by Resend: status ${res.status}`,
   );
   if (isOurFailure) {
