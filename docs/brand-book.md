@@ -141,6 +141,7 @@ Kühles, präzises Licht statt warmem Creme. Alle Werte sind Tokens, Hex-Werte t
 | `--ink` | #1C1C1A | Text | 15,6:1 |
 | `--ink-soft` | #55544E | Sekundärtext | 7,0:1 |
 | `--line` | #DDDCD4 | Linien, Raster, Passermarken | |
+| `--line-control` | #84837B | Grenzen von Bedienelementen (Inputs, Felder) | 3,5:1, auf Weiß 3,8:1 |
 | `--rubric` | #A8232D | Rubrikrot: Marker, Korrekturen, ein Akzent pro Ansicht | 6,2:1 |
 | `--rubric-deep` | #7E1A22 | Hover, Pressed | |
 | `--status-ready` | #1F6B4A | BEREIT | 5,2:1 |
@@ -148,7 +149,7 @@ Kühles, präzises Licht statt warmem Creme. Alle Werte sind Tokens, Hex-Werte t
 | `--status-error` | #9A2B2B | FEHLER | 6,5:1 |
 | `--status-online` | #1E4E8C | ONLINE | 7,2:1 |
 
-Regeln: WCAG AA ist Gate, nicht Ziel (Text mindestens 4,5:1, große Grade 3:1). Rubrikrot nie flächig als Hintergrund, nie für lange Texte, maximal ein rotes Element pro Viewport. Statusfarben sind funktional und tauchen nur als Badge, Balken oder Punkt auf, nie dekorativ. Ein späterer dunkler App-Modus ("Setzerei") ist erlaubt, wird aber aus denselben Tokens abgeleitet und ist nicht die Markenheimat.
+Regeln: WCAG AA ist Gate, nicht Ziel (Text mindestens 4,5:1, große Grade 3:1). Grenzen von Bedienelementen unterliegen WCAG 1.4.11 und nutzen ausschließlich `--line-control`, Zielmarke mindestens 3,5:1 gegen den schlechteren Untergrund (`--paper`, denn Felder können direkt auf Papier sitzen, nicht nur auf Karten); `--line` bleibt reinen Struktur- und Schmucklinien vorbehalten und trägt bewusst keinen Kontrastanspruch. Der Fokusring bleibt `--ink`. Rubrikrot nie flächig als Hintergrund, nie für lange Texte, maximal ein rotes Element pro Viewport. Statusfarben sind funktional und tauchen nur als Badge, Balken oder Punkt auf, nie dekorativ. Ein späterer dunkler App-Modus ("Setzerei") ist erlaubt, wird aber aus denselben Tokens abgeleitet und ist nicht die Markenheimat.
 
 ### 5.3 Typografie
 

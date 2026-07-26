@@ -123,11 +123,12 @@ Größen: S ≈ 30 min, M ≈ 45 min, L ≈ 60 min (Obergrenze). Tasks mit a/b s
 
 ### Task 10b: Onboarding, Workspace-Liste, Workspace-Routing (M)
 
-- **Ziel:** Alle App-Routen unter `/w/[workspaceId]`, Zugriff nur mit Membership; neuer Nutzer kommt vom Login bis in seinen eigenen Workspace.
-- **Dateien:** Scaffold-Root-Page `src/app/page.tsx` **löschen** und durch Redirect ersetzen (sonst Routen-Konflikt mit `(app)/page.tsx`: „two parallel pages resolve to /" — bricht erst den Vercel-Build, CI baut nicht); `src/app/(app)/page.tsx` (Liste der eigenen Workspaces als minimaler Umschalter; bei leerer Membership-Liste Redirect nach `/onboarding`); `src/app/(app)/onboarding/page.tsx` (nur Name; bei vorhandener Membership Redirect zurück zur Liste); `src/app/(app)/w/[workspaceId]/layout.tsx` mit `requireWorkspaceMembership` — Nicht-Mitglied → `notFound()` (404 statt 403, keine Existenz-Leaks). Kein Cookie als Workspace-Quelle: die URL plus serverseitige Membership-Prüfung ist die einzige Wahrheit.
+- **Ziel:** Alle Workspace-Routen unter `/w/[workspaceId]`, Zugriff nur mit Membership; neuer Nutzer kommt vom Login bis in seinen eigenen Workspace.
+- **Routen-Lage (nach Task 8, PRD-Entscheidungs-Log Nr. 6 und 7):** Die Scaffold-Root-Page ist bereits gelöscht, `/` bleibt bis zum Landingpage-Einschub unbelegt und liefert die deutsche not-found — **kein `(app)/page.tsx` anlegen.** `tests/app/route-conflicts.test.ts` meldet jede URL-Doppelbelegung rot (Ersatz für den Build-Fehler, den Turbopack seit 16.2.11 nicht mehr wirft). Die Workspace-Liste lebt auf `/start`: Der Pfad ist der dauerhafte, semantisch neutrale Einstiegspunkt nach dem Login (heute Liste, ab Phase 1 voraussichtlich Redirect in den zuletzt genutzten Workspace, der Pfad überlebt beides).
+- **Dateien:** `src/app/(app)/start/page.tsx` (Platzhalter-Inhalt durch die Liste der eigenen Workspaces als minimalen Umschalter ersetzen; bei leerer Membership-Liste Redirect nach `/onboarding`); `src/app/(app)/onboarding/page.tsx` (nur Name; bei vorhandener Membership Redirect zurück nach `/start`); `src/app/(app)/w/[workspaceId]/layout.tsx` mit `requireWorkspaceMembership` — Nicht-Mitglied → `notFound()` (404 statt 403, keine Existenz-Leaks). Kein Cookie als Workspace-Quelle: die URL plus serverseitige Membership-Prüfung ist die einzige Wahrheit. **Proxy-Matcher in `src/proxy.ts` um `/onboarding` und `/w/:path*` erweitern** (`/start` steht schon drin; ein fehlender Eintrag kostet nur den callbackUrl-Komfort, nie Sicherheit, die Grenze bleibt das (app)-Layout).
 - **Env:** keine neuen.
-- **Testansatz:** manuell auf Preview: Login → Onboarding → Workspace → Liste; fremde workspaceId in der URL → 404; Unit für extrahierte Redirect-Logik, sofern sinnvoll.
-- **DoD:** Ein neuer Nutzer kommt vom Login bis in seinen eigenen Workspace; fremde workspaceId → 404 (durch Task-10a-Test abgesichert); kein Routen-Konflikt im Vercel-Build.
+- **Testansatz:** manuell auf Preview: Login → Onboarding → Workspace → zurück zur Liste; fremde workspaceId in der URL → 404; Unit für extrahierte Redirect-Logik, sofern sinnvoll; `tests/app/route-conflicts.test.ts` bleibt grün.
+- **DoD:** Ein neuer Nutzer kommt vom Login bis in seinen eigenen Workspace; fremde workspaceId → 404 (durch Task-10a-Test abgesichert); route-conflicts-Test grün und `/` bleibt unbelegt.
 
 ### Task 11: Einladungslink (M)
 

@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 // Where a fresh login lands when no explicit target survived validation.
-// Temporary route until task 10b moves the app home to "/".
+// /start is the permanent post-login entry point (PRD decision log no. 7);
+// task 10b fills it with the workspace list.
 export const AFTER_LOGIN_DEFAULT = "/start";
 
 export const LOGIN_EMAIL_INVALID_MESSAGE =

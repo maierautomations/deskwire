@@ -4,9 +4,9 @@ export const metadata: Metadata = {
   title: "Start",
 };
 
-// Temporary app home so the protected area has one real route. Task 10b
-// deletes this page when the workspace list takes over "/" (the proxy
-// matcher in src/proxy.ts changes with it).
+// Permanent post-login entry point (PRD decision log no. 7): the route
+// stays, the content grows. Task 10b replaces this placeholder with the
+// workspace list; "/" stays unassigned until the landing page decision.
 export default function StartPage() {
   return (
     <div className="flex max-w-xl flex-col gap-2">

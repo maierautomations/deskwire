@@ -17,6 +17,9 @@
   --ink: #1c1c1a;
   --ink-soft: #55544e;
   --line: #dddcd4;
+  /* Control boundaries need WCAG 1.4.11 contrast (brand book 5.2: target
+     >= 3.5:1 against the worse background); --line stays decorative. */
+  --line-control: #84837b;
   --rubric: #a8232d;
   --rubric-deep: #7e1a22;
   --status-ready: #1f6b4a;
@@ -44,7 +47,7 @@
   --accent-foreground: var(--ink);
   --destructive: var(--status-error);
   --border: var(--line);
-  --input: var(--line);
+  --input: var(--line-control);
   --ring: var(--ink);
 }
 
@@ -55,6 +58,7 @@
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
+  --color-line-control: var(--line-control);
   --color-rubric: var(--rubric);
   --color-rubric-deep: var(--rubric-deep);
   --color-status-ready: var(--status-ready);

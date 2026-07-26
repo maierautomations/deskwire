@@ -348,6 +348,8 @@ Fachliche Kerntabellen, alle mit `id`, `workspace_id`, `created_at`, `updated_at
 3. Generisch bauen, vertikal vermarkten: Das Produkt bleibt branchenneutral, Landingpage und erste Design-Partner adressieren Fach- und Finanzmedien.
 4. Produktname und Domain bewusst vertagt bis zum stehenden MVP (M3/M4), Arbeitstitel bleibt Deskwire.
 5. Paketmanager: npm statt pnpm. Begründung: Vertrautheit und Standard-Tooling des Betreibers. Entschieden vor Task 1a (Phase 0).
+6. Root-Zuordnung offen (26.07.2026): `/` bleibt bis zum Landingpage-Einschub unbelegt und liefert die deutsche 404. `(app)` und `(marketing)` dürfen nie gleichzeitig eine page.tsx auf `/` haben; technisch abgesichert durch `tests/app/route-conflicts.test.ts`, denn Turbopack meldet den Konflikt seit 16.2.11 nicht mehr als Build-Fehler.
+7. `/start` ist der dauerhafte Einstiegspunkt nach dem Login (26.07.2026). Begründung: semantisch neutral, der Pfad bedeutet nur „Einstieg nach Login" — heute liegt dort die Workspace-Liste, ab Phase 1 voraussichtlich ein Redirect in den zuletzt genutzten Workspace, ein beschreibender Pfad müsste dann umziehen.
 
 **Offen:**
 
