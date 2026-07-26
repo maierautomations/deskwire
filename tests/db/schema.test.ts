@@ -4,22 +4,10 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { brandProfiles, workspaces } from "@/db/schema";
-import { createTestDb, type TestDb } from "../helpers/db";
+import { createTestDb, messageChain, type TestDb } from "../helpers/db";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-// Drizzle wraps driver errors, so the Postgres detail (e.g. "violates
-// foreign key constraint") may live anywhere in the cause chain.
-function messageChain(err: unknown): string {
-  const parts: string[] = [];
-  let current: unknown = err;
-  while (current instanceof Error) {
-    parts.push(current.message);
-    current = current.cause;
-  }
-  return parts.join(" | ");
-}
 
 describe("PGlite test harness (real migrations from src/db/migrations)", () => {
   let db: TestDb;

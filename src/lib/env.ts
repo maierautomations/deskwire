@@ -5,6 +5,13 @@ import { z } from "zod";
 // without any env values set.
 const serverEnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
+  // Auth.js core (task 7a). AUTH_URL is deliberately absent: URLs derive
+  // from the request host (trustHost), which keeps magic links correct on
+  // every preview deployment.
+  AUTH_SECRET: z.string().min(1),
+  AUTH_RESEND_KEY: z.string().min(1),
+  // Plain address or "Name <address>" display form, so no z.email() here.
+  EMAIL_FROM: z.string().min(1),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

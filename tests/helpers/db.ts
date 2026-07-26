@@ -17,6 +17,18 @@ export interface TestDbHandle {
   close: () => Promise<void>;
 }
 
+// Drizzle wraps driver errors, so the Postgres detail (e.g. "violates
+// foreign key constraint") may live anywhere in the cause chain.
+export function messageChain(err: unknown): string {
+  const parts: string[] = [];
+  let current: unknown = err;
+  while (current instanceof Error) {
+    parts.push(current.message);
+    current = current.cause;
+  }
+  return parts.join(" | ");
+}
+
 // Resolved from this file, not from the cwd, so tests work no matter where
 // vitest was started from.
 const migrationsFolder = fileURLToPath(
