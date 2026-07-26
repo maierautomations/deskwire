@@ -36,9 +36,15 @@ export function authConfig(): NextAuthConfig {
         sendVerificationRequest,
       }),
     ],
-    // Every auth failure redirects to the German error page (task 7b)
-    // instead of the generic English Auth.js page.
-    pages: { error: "/anmelde-fehler" },
+    // German auth surfaces (tasks 7b + 8): failures land on the error page,
+    // sign-in flows point at our login page, and non-form flows that trigger
+    // a mail land on the static German confirmation instead of the English
+    // Auth.js default.
+    pages: {
+      error: "/anmelde-fehler",
+      signIn: "/login",
+      verifyRequest: "/login/verschickt",
+    },
     // All URLs derive from the request host, so magic links point at the
     // exact deployment (production, any preview URL, localhost). Vercel
     // always sets trusted forwarded headers. Never set AUTH_URL.

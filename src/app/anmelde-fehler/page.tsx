@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,13 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BRAND_WORDMARK } from "@/lib/brand";
 
 import { authErrorContent } from "./messages";
 
 // Target of `pages.error` in src/auth.ts: Auth.js redirects every auth
-// failure here with ?error=<code>. The retry link points at the default
-// Auth.js sign-in page until task 8 ships /login.
+// failure here with ?error=<code>. Send failures from our own form never
+// arrive here (task 8 shows them inline on /login); this page covers the
+// Auth.js-driven redirect cases such as expired links.
 
 export const metadata: Metadata = {
   title: "Anmeldung fehlgeschlagen",
@@ -34,9 +35,7 @@ export default async function AuthErrorPage({
     <main className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <p className="font-display text-sm font-semibold">
-            {BRAND_WORDMARK}
-          </p>
+          <Wordmark className="text-sm" />
           <CardTitle className="font-display text-2xl font-semibold">
             {content.title}
           </CardTitle>
@@ -46,7 +45,7 @@ export default async function AuthErrorPage({
         </CardContent>
         <CardFooter>
           <Button asChild>
-            <Link href="/api/auth/signin">{content.action}</Link>
+            <Link href="/login">{content.action}</Link>
           </Button>
         </CardFooter>
       </Card>
