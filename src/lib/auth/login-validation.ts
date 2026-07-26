@@ -8,7 +8,19 @@ export const AFTER_LOGIN_DEFAULT = "/start";
 export const LOGIN_EMAIL_INVALID_MESSAGE =
   "Bitte gib eine gültige E-Mail-Adresse ein.";
 
-const loginEmailSchema = z.string().trim().toLowerCase().max(254).pipe(z.email());
+// The single email normalization, shared between the login form schema and
+// the rate-limit key hashing (task 9). Direct POSTs to the auth endpoint
+// bypass parseLoginEmail, so the hash input must run through the exact same
+// normalization here instead of a second implementation.
+export function normalizeLoginEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+const loginEmailSchema = z
+  .string()
+  .transform(normalizeLoginEmail)
+  .pipe(z.string().max(254))
+  .pipe(z.email());
 
 export type LoginEmailResult =
   | { ok: true; email: string }
