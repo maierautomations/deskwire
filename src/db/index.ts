@@ -5,16 +5,34 @@ import ws from "ws";
 
 import { serverEnv } from "@/lib/env";
 
+import {
+  findMembership,
+  listWorkspacesForUser,
+  type WorkspaceForUser,
+} from "./memberships";
 import * as schema from "./schema";
 import { scopedDb, type ScopedDb } from "./scoped";
+import {
+  createWorkspaceWithOwner,
+  type CreateWorkspaceWithOwnerParams,
+  type CreateWorkspaceWithOwnerResult,
+  type Membership,
+} from "./workspaces";
 
 // The Neon driver needs an explicit WebSocket implementation in Node;
 // wiring ws keeps the behavior identical across local dev and Vercel.
 neonConfig.webSocketConstructor = ws;
 
 export type Db = NeonDatabase<typeof schema>;
+export type { WorkspaceForUser } from "./memberships";
 export type { DbClient, NewBrandProfile, ScopedDb } from "./scoped";
 export { scopedDb } from "./scoped";
+export type {
+  CreateWorkspaceWithOwnerParams,
+  CreateWorkspaceWithOwnerResult,
+  Membership,
+  Workspace,
+} from "./workspaces";
 
 let db: Db | null = null;
 
@@ -38,4 +56,27 @@ export function getScopedDb(workspaceId: string): ScopedDb {
 // no domain data, and lives here so app code never needs the raw client.
 export async function pingDb(): Promise<void> {
   await getDb().execute(sql`select 1`);
+}
+
+// Bound tenancy entry points (task 10a), pattern as scopedDb/getScopedDb:
+// the raw helpers in workspaces.ts/memberships.ts take a DbClient and stay
+// testable against PGlite; these bound versions carry DIFFERENT names so a
+// mixed-up import cannot typecheck-silently swap one for the other.
+export function createWorkspaceAsOwner(
+  params: CreateWorkspaceWithOwnerParams,
+): Promise<CreateWorkspaceWithOwnerResult> {
+  return createWorkspaceWithOwner(getDb(), params);
+}
+
+export function getWorkspacesForUser(
+  userId: string,
+): Promise<WorkspaceForUser[]> {
+  return listWorkspacesForUser(getDb(), userId);
+}
+
+export function getMembership(
+  userId: string,
+  workspaceId: string,
+): Promise<Membership | null> {
+  return findMembership(getDb(), userId, workspaceId);
 }

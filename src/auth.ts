@@ -1,12 +1,26 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import NextAuth from "next-auth";
-import type { NextAuthConfig } from "next-auth";
+import type { DefaultSession, NextAuthConfig } from "next-auth";
 import Resend from "next-auth/providers/resend";
 
 import { getDb } from "@/db";
 import { accounts, sessions, users, verificationTokens } from "@/db/schema";
 import { sendVerificationRequest } from "@/lib/email/send-verification-request";
 import { serverEnv } from "@/lib/env";
+
+// Without augmentation Session.user is optional and User.id is string |
+// undefined (@auth/core types.d.ts). The session callback below copies the
+// adapter user's id on every request, so the id is declared as the required
+// field it actually is — consumers like the workspace actions (task 10a)
+// must not carry a string | undefined path that only works by accident.
+// This declaration lives next to the callback that makes it true.
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+    } & DefaultSession["user"];
+  }
+}
 
 // Lazy config (function form): the config runs per request, never at module
 // scope. next build imports route modules while collecting page data, and
@@ -44,6 +58,17 @@ export function authConfig(): NextAuthConfig {
       error: "/anmelde-fehler",
       signIn: "/login",
       verifyRequest: "/login/verschickt",
+    },
+    callbacks: {
+      // With database sessions the default callback still strips the user
+      // down to name/email/image (verified in @auth/core 0.41.3 lib/init.js),
+      // so auth() never sees the user id without this. The id is what ties a
+      // session to memberships (task 10a). Do NOT add a signIn callback here:
+      // tests/auth/auth-config.test.ts guards the AccessDenied assumption.
+      session({ session, user }) {
+        session.user.id = user.id;
+        return session;
+      },
     },
     // All URLs derive from the request host, so magic links point at the
     // exact deployment (production, any preview URL, localhost). Vercel

@@ -1,6 +1,7 @@
 import {
   index,
   integer,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -78,6 +79,37 @@ export const verificationTokens = pgTable(
     expires: timestamp("expires", { withTimezone: true }).notNull(),
   },
   (table) => [primaryKey({ columns: [table.identifier, table.token] })],
+);
+
+// Role is a plain column, nothing more: permission logic is explicitly
+// phase 4 (PRD ch. 11 only mandates the column, phase-0 decision no. 21).
+export const membershipRole = pgEnum("membership_role", ["owner", "member"]);
+
+// Tenancy core (task 10a): which user belongs to which workspace. The
+// composite primary key doubles as the required unique(user_id, workspace_id);
+// the extra index covers workspace-side lookups the PK order cannot serve.
+export const memberships = pgTable(
+  "memberships",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    role: membershipRole("role").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.workspaceId] }),
+    index("memberships_workspace_id_idx").on(table.workspaceId),
+  ],
 );
 
 // Deliberate phase-0 stub: establishes the workspace-scoped table pattern.
