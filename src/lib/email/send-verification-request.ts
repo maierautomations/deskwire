@@ -4,6 +4,12 @@ import type { EmailConfig } from "next-auth/providers";
 
 import { shouldUseDevLog } from "@/lib/email/dev-log";
 import { magicLinkEmail } from "@/lib/email/magic-link-template";
+import {
+  checkMagicLinkRateLimit,
+  clientIpFromRequest,
+  getMagicLinkRateLimiters,
+  type MagicLinkRateLimitInput,
+} from "@/lib/security/ratelimit";
 
 // German magic-link mail (HTML + text, task 7b).
 //
@@ -13,7 +19,13 @@ import { magicLinkEmail } from "@/lib/email/magic-link-template";
 // trigger through the public sign-in endpoint (sandbox recipient
 // restriction, invalid address, Resend rate limit) throw WITHOUT a Sentry
 // event, otherwise a handful of foreign requests drains the Sentry quota.
-// Real rate limiting for this path lands in task 9.
+//
+// Rate limit (task 9): the guard lives HERE and not in the login server
+// action because this is the one point both the form flow and direct POSTs
+// to /api/auth/signin/resend pass through. It runs after the dev-log
+// short-circuit (provably local-only, sends no mail) and before anything
+// that reaches Resend, so the guarded surface is exactly the mail-sending
+// path. Limit hits are foreign-triggerable and never reach Sentry.
 
 // Thrown for every failed send. `static type = "AccessDenied"` deliberately
 // reuses the only client-safe Auth.js error type whose semantics fit ("the
@@ -27,12 +39,38 @@ export class MagicLinkSendError extends AuthError {
   static type = "AccessDenied";
 }
 
+// Thrown on a rate-limit hit. A limit is not a send failure, so this is a
+// distinct class: the login action tells them apart via instanceof and
+// shows a different next step (wait, instead of retry-later-something-broke).
+// That works because @auth/core 0.41.3 rethrows the ORIGINAL error instance
+// in raw mode (index.js: `if (isAuthError && isRaw && !isRedirect) throw
+// error`) and next-auth's action wrapper adds no try/catch of its own. The
+// static type is still "AccessDenied" — for redirect flows (direct POSTs)
+// only the client-safe type survives as ?error= and AccessDenied remains
+// the only fitting one (task-7b finding), so that path degrades to the generic
+// send-failure copy on /anmelde-fehler. Accepted: it is practically the
+// abuse path, and that copy already says "try again in a few minutes".
+export class MagicLinkRateLimitError extends AuthError {
+  static type = "AccessDenied";
+}
+
+export const MAGIC_LINK_RATE_LIMIT_MESSAGE =
+  "Zu viele Anmeldeversuche. Bitte warte ein paar Minuten.";
+
+export type RateLimitCheck = (
+  input: MagicLinkRateLimitInput,
+) => Promise<{ limited: boolean }>;
+
+const defaultRateLimitCheck: RateLimitCheck = (input) =>
+  checkMagicLinkRateLimit(input, getMagicLinkRateLimiters());
+
 type SendVerificationRequestParams = Parameters<
   EmailConfig["sendVerificationRequest"]
 >[0];
 
 export async function sendVerificationRequest(
   params: SendVerificationRequestParams,
+  checkRateLimit: RateLimitCheck = defaultRateLimitCheck,
 ): Promise<void> {
   const { identifier, url, provider } = params;
 
@@ -42,6 +80,15 @@ export async function sendVerificationRequest(
     // Resend sandbox.
     console.log(`[auth][dev-log] Magic link for ${identifier}:\n${url}`);
     return;
+  }
+
+  const { limited } = await checkRateLimit({
+    email: identifier,
+    ip: clientIpFromRequest(params.request),
+  });
+  if (limited) {
+    // No Sentry event: foreign-triggerable (task-7a classification).
+    throw new MagicLinkRateLimitError("Magic-link rate limit hit");
   }
 
   const { apiKey, from } = provider;

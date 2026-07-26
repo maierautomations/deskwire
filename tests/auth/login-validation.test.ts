@@ -3,9 +3,24 @@ import { describe, expect, it } from "vitest";
 import {
   AFTER_LOGIN_DEFAULT,
   LOGIN_EMAIL_INVALID_MESSAGE,
+  normalizeLoginEmail,
   parseLoginEmail,
   sanitizeCallbackPath,
 } from "@/lib/auth/login-validation";
+
+describe("normalizeLoginEmail", () => {
+  it("trims and lowercases, matching what parseLoginEmail returns", () => {
+    const raw = "  Dominik@MaierAI.com ";
+    expect(normalizeLoginEmail(raw)).toBe("dominik@maierai.com");
+    // The rate-limit key hashing (task 9) relies on this equivalence: a
+    // form-normalized address and a raw identifier from a direct POST must
+    // land on the same counter.
+    expect(parseLoginEmail(raw)).toEqual({
+      ok: true,
+      email: normalizeLoginEmail(raw),
+    });
+  });
+});
 
 describe("parseLoginEmail", () => {
   it("accepts a valid address and normalizes trim and case", () => {

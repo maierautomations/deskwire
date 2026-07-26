@@ -46,7 +46,11 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string | null }) {
   }
 
   const errorState =
-    state.status === "invalid" || state.status === "send_failed" ? state : null;
+    state.status === "invalid" ||
+    state.status === "send_failed" ||
+    state.status === "rate_limited"
+      ? state
+      : null;
 
   return (
     <form action={formAction} className="flex flex-col gap-4">

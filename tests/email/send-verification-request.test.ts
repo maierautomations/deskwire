@@ -14,12 +14,17 @@ import {
 import * as Sentry from "@sentry/nextjs";
 
 import {
+  MagicLinkRateLimitError,
   MagicLinkSendError,
   sendVerificationRequest,
 } from "@/lib/email/send-verification-request";
 
-// Hoisted by vitest above all imports.
-vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+// Hoisted by vitest above all imports. captureMessage is needed since task 9:
+// the default rate-limit path warns once when the Upstash env is missing.
+vi.mock("@sentry/nextjs", () => ({
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+}));
 
 const identifier = "user@example.com";
 const url =
@@ -27,6 +32,7 @@ const url =
 
 function makeParams(
   overrides: Partial<EmailConfig> = {},
+  requestHeaders: Record<string, string> = {},
 ): Parameters<typeof sendVerificationRequest>[0] {
   // The Resend factory stores user options under `options`; Auth.js merges
   // them onto the provider at runtime. Replicate that merge here so the
@@ -44,7 +50,10 @@ function makeParams(
     provider,
     token: "abc123",
     theme: {},
-    request: new Request("https://deskwire.vercel.app/api/auth/signin/resend"),
+    request: new Request(
+      "https://deskwire.vercel.app/api/auth/signin/resend",
+      { headers: requestHeaders },
+    ),
   };
 }
 
@@ -127,6 +136,78 @@ describe("sendVerificationRequest", () => {
     ).rejects.toBeInstanceOf(MagicLinkSendError);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws MagicLinkRateLimitError on a limit hit: no fetch, no Sentry", async () => {
+    const checkRateLimit = vi.fn().mockResolvedValue({ limited: true });
+
+    const error: unknown = await sendVerificationRequest(
+      makeParams(),
+      checkRateLimit,
+    ).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(MagicLinkRateLimitError);
+    // Distinct class (a limit is not a send failure), same client-safe type.
+    expect(error).not.toBeInstanceOf(MagicLinkSendError);
+    expect(error).toBeInstanceOf(AuthError);
+    expect((error as MagicLinkRateLimitError).type).toBe("AccessDenied");
+    expect(fetchMock).not.toHaveBeenCalled();
+    // Limit hits are foreign-triggerable: never a Sentry event (task 7a).
+    expect(Sentry.captureException).not.toHaveBeenCalled();
+  });
+
+  it("hands identifier and x-real-ip to the check, then sends normally", async () => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    const checkRateLimit = vi.fn().mockResolvedValue({ limited: false });
+
+    await sendVerificationRequest(
+      makeParams({}, { "x-real-ip": "203.0.113.7" }),
+      checkRateLimit,
+    );
+
+    expect(checkRateLimit).toHaveBeenCalledWith({
+      email: identifier,
+      ip: "203.0.113.7",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("hands ip null to the check when x-real-ip is absent", async () => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    const checkRateLimit = vi.fn().mockResolvedValue({ limited: false });
+
+    await sendVerificationRequest(makeParams(), checkRateLimit);
+
+    expect(checkRateLimit).toHaveBeenCalledWith({
+      email: identifier,
+      ip: null,
+    });
+  });
+
+  it("sends despite missing Upstash env: the default check fails open", async () => {
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", undefined);
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", undefined);
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await sendVerificationRequest(makeParams());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("short-circuits into the dev log before the rate-limit guard", async () => {
+    vi.stubEnv("AUTH_EMAIL_DEV_LOG", "1");
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("VERCEL", undefined);
+    vi.stubEnv("VERCEL_ENV", undefined);
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const checkRateLimit = vi.fn().mockResolvedValue({ limited: true });
+
+    await sendVerificationRequest(makeParams(), checkRateLimit);
+
+    // Provably local-only path, sends no mail: the limiter is not consulted.
+    expect(checkRateLimit).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("logs the magic link instead of sending when unambiguously local", async () => {
