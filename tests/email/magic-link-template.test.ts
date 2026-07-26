@@ -19,8 +19,9 @@ describe("magicLinkEmail", () => {
     const { html } = magicLinkEmail({ url });
     const escaped = url.replaceAll("&", "&amp;");
     expect(html).toContain(`href="${escaped}"`);
-    // Escaped once in the button href, once as the copyable fallback line.
-    expect(html.split(escaped).length - 1).toBe(2);
+    // Escaped in the button href plus the fallback link (href and visible
+    // text).
+    expect(html.split(escaped).length - 1).toBe(3);
     // The raw ampersand form must not leak into the markup.
     expect(html).not.toContain("&token=");
   });

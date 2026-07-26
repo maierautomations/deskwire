@@ -57,7 +57,10 @@ export function magicLinkEmail({ url }: { url: string }): MagicLinkEmail {
   const safeUrl = escapeHtml(url);
 
   // The button is the single rubric-red element of this view (brand book
-  // 5.2). Everything else stays paper, ink and line.
+  // 5.2). Everything else stays paper, ink and line. The fallback URL is
+  // wrapped in an explicitly styled <a>: mail clients auto-link bare URLs
+  // in their own link blue otherwise, which would compete with the CTA.
+  // Its 13px mono is the brand-book floor ("Mono nie unter 13px").
   const html = `<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -85,8 +88,8 @@ export function magicLinkEmail({ url }: { url: string }): MagicLinkEmail {
 </tr>
 </table>
 <p style="margin:24px 0 0;font-family:${font.body};font-size:15px;line-height:22px;color:${color.inkSoft};">Der Link ist 24 Stunden gültig und kann nur einmal verwendet werden.</p>
-<p style="margin:16px 0 0;font-family:${font.body};font-size:15px;line-height:22px;color:${color.inkSoft};">Falls der Button nicht funktioniert, kopier diesen Link in deinen Browser:</p>
-<p style="margin:8px 0 0;font-family:${font.mono};font-size:13px;line-height:20px;color:${color.inkSoft};word-break:break-all;">${safeUrl}</p>
+<p style="margin:16px 0 0;font-family:${font.body};font-size:13px;line-height:20px;color:${color.inkSoft};">Falls der Button nicht funktioniert, kopier diesen Link in deinen Browser:</p>
+<p style="margin:8px 0 0;font-family:${font.mono};font-size:13px;line-height:20px;word-break:break-all;"><a href="${safeUrl}" style="color:${color.inkSoft};text-decoration:underline;">${safeUrl}</a></p>
 </td>
 </tr>
 <tr>
