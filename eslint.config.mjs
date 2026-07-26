@@ -11,9 +11,12 @@ const eslintConfig = defineConfig([
   // Tenant isolation (CLAUDE.md principle 3), technically enforced:
   // outside src/db/** neither the raw client nor a self-built driver client
   // is allowed. tests/** is exempt by not matching files: ["src/**"].
+  // src/auth.ts is the single exception announced in task 6: the Auth.js
+  // adapter needs the raw client, and its tables are tenant-free
+  // infrastructure (no workspace_id).
   {
     files: ["src/**"],
-    ignores: ["src/db/**"],
+    ignores: ["src/db/**", "src/auth.ts"],
     rules: {
       "no-restricted-imports": [
         "error",

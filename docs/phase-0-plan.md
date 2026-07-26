@@ -91,9 +91,10 @@ Größen: S ≈ 30 min, M ≈ 45 min, L ≈ 60 min (Obergrenze). Tasks mit a/b s
 
 - **Ziel:** Produktionsreifer Mailversand (deutsches HTML+Text-Template) plus Testbarkeit für Zweit-User trotz Resend-Sandbox.
 - **Dateien:** `src/lib/email/send-verification-request.ts` (HTML+Text, deutscher Betreff, Du-Ansprache); **Dev-Modus:** bei `AUTH_EMAIL_DEV_LOG=1` und `NODE_ENV=development` wird der Magic-Link nur ins Server-Log geschrieben — umgeht die Resend-Sandbox für Zweit-User-Tests; Unit-Tests.
+- **Fehlerseite (verbindlich, Befund aus 7a):** Auth.js mappt jeden Nicht-`AuthError` aus `sendVerificationRequest` auf die generische englische Seite `error=Configuration`. In 7b werden Sendefehler als Auth.js-`AuthError` typisiert und dem Nutzer deutsch und erklärend angezeigt (Brand Book 4.3 Regel 4: Fehler erklären, nie entschuldigen, nie vernebeln), mit Testfall.
 - **Env:** optional `AUTH_EMAIL_DEV_LOG` (nie in Vercel).
 - **Testansatz:** Unit: `sendVerificationRequest` mit gemocktem `fetch` (From, To, deutscher Betreff, Link enthalten; Fehlerpfad wirft; Dev-Log-Modus sendet nicht).
-- **DoD:** Tests grün; Zweit-User-Login lokal via Dev-Log nachweislich möglich; Signout löscht die Session-Row.
+- **DoD:** Tests grün; Zweit-User-Login lokal via Dev-Log nachweislich möglich; Signout löscht die Session-Row; Sendefehler zeigen eine erklärende deutsche Meldung statt `error=Configuration`.
 
 ### Task 8: Login-UI und Routen-Schutz (M)
 
@@ -250,7 +251,7 @@ Größen: S ≈ 30 min, M ≈ 45 min, L ≈ 60 min (Obergrenze). Tasks mit a/b s
 
 ## e) Abnahme-Checkliste für das Demo-Kriterium
 
-Basis: Production-URL. **Ausnahme Schritte 5 und 7:** User B kann auf Production nicht einloggen (Resend-Sandbox sendet nur an die Signup-Adresse, Dev-Log-Login ist nie in Vercel aktiv) — diese zwei Schritte laufen lokal (`npm run dev` mit `.env.local`, deren `DATABASE_URL` auf die Produktions-DB zeigt, Login via Dev-Log). Die Datenisolation wird damit trotzdem gegen dieselbe Produktions-DB bewiesen. User A = Resend-Signup-Adresse (dominik.maier049@gmail.com).
+Basis: Production-URL. **Ausnahme Schritte 5 und 7:** User B kann auf Production nicht einloggen (Resend-Sandbox sendet nur an die Signup-Adresse, Dev-Log-Login ist nie in Vercel aktiv) — diese zwei Schritte laufen lokal (`npm run dev` mit `.env.local`, deren `DATABASE_URL` auf die Produktions-DB zeigt, Login via Dev-Log). Die Datenisolation wird damit trotzdem gegen dieselbe Produktions-DB bewiesen. User A = Resend-Signup-Adresse (dominik@maierai.com).
 
 1. [ ] `/api/health` liefert ok inklusive DB-Ping.
 2. [ ] `/login` öffnen, Magic Link anfordern → Mail kommt auf Deutsch an, Login klappt, Session-Row in `sessions`; Abmelden und geschützte Route ohne Session aufrufen → Redirect auf `/login`.
