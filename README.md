@@ -25,6 +25,10 @@ npx vercel env pull  # schreibt .env.local (gitignored)
 
 Niemals echte Werte committen. Jede neue Variable wird in dem Task, der sie einführt, in `.env.example` dokumentiert (Name plus Kommentar, ohne Wert).
 
+### Datenzugriff
+
+Fachliche Daten werden ausschließlich über die gescopten Query-Helper gelesen und geschrieben: `getScopedDb(workspaceId)` aus `@/db`, Muster in `src/db/scoped.ts`. Der rohe Client (`getDb`) und die DB-Treiber sind außerhalb von `src/db/**` per ESLint-Regel verboten (`tests/**` ist ausgenommen). Bewusst unscoped Zugriffe, etwa das Anlegen von Workspaces, leben nur als gekapselte Helper in `src/db/**`.
+
 ### Deployment
 
 - Push auf `main` deployt automatisch nach Production (Vercel).
