@@ -59,6 +59,14 @@ describe("sanitizeCallbackPath", () => {
     expect(sanitizeCallbackPath(AFTER_LOGIN_DEFAULT)).toBe(AFTER_LOGIN_DEFAULT);
   });
 
+  it("keeps an invite redemption path intact (task-11 login roundtrip)", () => {
+    // 43 base64url characters, exactly what generateInviteToken produces;
+    // hyphen and underscore are the two non-alphanumeric characters in play.
+    const invitePath = `/invite/${"aZ9-_".repeat(8)}aZ9`;
+    expect(invitePath.length).toBe("/invite/".length + 43);
+    expect(sanitizeCallbackPath(invitePath)).toBe(invitePath);
+  });
+
   it.each([
     ["undefined", undefined],
     ["null", null],

@@ -112,6 +112,34 @@ export const memberships = pgTable(
   ],
 );
 
+// Exactly one regenerable multi-use invite link per workspace (phase-0
+// decision no. 22): workspace_id as primary key enforces the one-row rule
+// structurally, renewal is an upsert on it. The token is stored in plaintext
+// on purpose: the settings page must re-display the current link at any time
+// ("Link kopieren"), which a hash could not serve; the risk stays bounded by
+// 256 bits of entropy, the 7-day TTL, regenerability and the small grant
+// (join as member). CLAUDE.md principle 5 targets external credentials, not
+// first-party bearer links. created_by uses set null, not cascade: the link
+// belongs to the workspace and must survive its creator's deletion.
+export const workspaceInvites = pgTable("workspace_invites", {
+  workspaceId: uuid("workspace_id")
+    .primaryKey()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  // The unique constraint doubles as the redemption lookup index.
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdBy: uuid("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
 // Deliberate phase-0 stub: establishes the workspace-scoped table pattern.
 // Real brand profile fields (versions, editor) arrive in phase 1.
 export const brandProfiles = pgTable(

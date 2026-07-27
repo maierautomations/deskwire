@@ -28,5 +28,7 @@ export const config = {
   // Protected app routes. Route groups never appear in URLs, so this lists
   // real paths. A missing entry only loses this comfort redirect, never
   // security: the (app) layout and the /w/[workspaceId] layout still guard.
-  matcher: ["/start", "/onboarding", "/w/:path*"],
+  // /invite is session-first by design (task 11): the callbackUrl this proxy
+  // sets is exactly how a fresh user returns to the invite after login.
+  matcher: ["/start", "/onboarding", "/w/:path*", "/invite/:path*"],
 };

@@ -6,6 +6,11 @@ import ws from "ws";
 import { serverEnv } from "@/lib/env";
 
 import {
+  findValidInviteByToken,
+  type WorkspaceInvite,
+} from "./invites";
+import {
+  createMembershipFromInvite,
   findMembership,
   listWorkspacesForUser,
   type WorkspaceForUser,
@@ -24,6 +29,11 @@ import {
 neonConfig.webSocketConstructor = ws;
 
 export type Db = NeonDatabase<typeof schema>;
+export {
+  INVITE_TOKEN_LENGTH,
+  INVITE_TTL_DAYS,
+  type WorkspaceInvite,
+} from "./invites";
 export type { WorkspaceForUser } from "./memberships";
 export type { DbClient, NewBrandProfile, ScopedDb } from "./scoped";
 export { scopedDb } from "./scoped";
@@ -79,4 +89,21 @@ export function getMembership(
   workspaceId: string,
 ): Promise<Membership | null> {
   return findMembership(getDb(), userId, workspaceId);
+}
+
+// Bound invite entry points (task 11), same different-name pattern as above.
+// Redemption is the one flow that legitimately runs without a workspace
+// scope: the workspace_id is unknown until the token lookup resolves it.
+export function getValidInvite(
+  token: string,
+  now: Date,
+): Promise<WorkspaceInvite | null> {
+  return findValidInviteByToken(getDb(), token, now);
+}
+
+export function joinWorkspaceAsMember(params: {
+  userId: string;
+  workspaceId: string;
+}): Promise<Membership | null> {
+  return createMembershipFromInvite(getDb(), params);
 }
