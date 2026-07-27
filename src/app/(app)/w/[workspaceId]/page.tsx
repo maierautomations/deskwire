@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { getWorkspacesForUser } from "@/db";
+import { subscriptionBadgeLabel } from "@/lib/billing/subscription-badge";
 import { MEMBERSHIP_ROLE_LABELS } from "@/lib/workspace";
 
 export const metadata: Metadata = {
@@ -40,6 +41,9 @@ export default async function WorkspacePage({
         <h1 className="font-display text-xl font-semibold">
           {entry.workspace.name}
         </h1>
+        <p className="font-mono text-xs text-ink-soft">
+          {subscriptionBadgeLabel(entry.workspace)}
+        </p>
       </div>
       <p className="max-w-prose text-sm text-ink-soft">
         Dein Workspace steht. Marken-Profile kannst du schon anlegen,
