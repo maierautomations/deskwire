@@ -62,6 +62,11 @@ export const SCOPE_EXEMPT_TABLES: readonly string[] = [
   // suite, not by a collection-shaped scopedDb entity entry.
   "memberships",
   "workspace_invites",
+  // Stripe webhook idempotency ledger (task 14, phase-0 decision 27):
+  // transport infrastructure. Event ids are Stripe-account-global and get
+  // recorded before any workspace resolution happens; a row carries no
+  // tenant data, only "this delivery was already processed".
+  "stripe_events",
 ];
 
 // All Drizzle table objects exported from the schema module. Programmatic on

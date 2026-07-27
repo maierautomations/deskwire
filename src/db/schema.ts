@@ -10,9 +10,26 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
+// Relative import on purpose: drizzle-kit loads this file directly and its
+// resolver is not guaranteed to honor the "@/" tsconfig alias.
+import type { StripeSubscriptionStatus } from "../lib/billing/subscription-status";
+
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  // --- Stripe billing sync (task 14) ---
+  // All nullable: a workspace without billing has none of these. Written
+  // exclusively by the webhook sync (src/lib/billing/sync.ts) after Zod
+  // validation; stripe_customer_id is set manually via Drizzle Studio in
+  // phase 0 (decision 28). subscription_status is text, not a pg enum:
+  // Stripe documents enum additions as non-breaking changes that appear on
+  // pinned API versions too, and a pg enum would force a migration per new
+  // status. The Zod boundary in sync.ts is the enforcement (decision 26).
+  stripeCustomerId: text("stripe_customer_id").unique(),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  subscriptionStatus: text("subscription_status").$type<StripeSubscriptionStatus>(),
+  stripeProductId: text("stripe_product_id"),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -20,6 +37,20 @@ export const workspaces = pgTable("workspaces", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
+});
+
+// Stripe webhook idempotency ledger (task 14, phase-0 decision 27):
+// transport infrastructure, deliberately without workspace_id. Event ids
+// are Stripe-account-global and get recorded before any workspace
+// resolution happens; a row carries no tenant data, only "this delivery
+// was already processed". The insert-on-conflict logic arrives with the
+// webhook route (task 15a).
+export const stripeEvents = pgTable("stripe_events", {
+  eventId: text("event_id").primaryKey(),
+  type: text("type").notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // --- Auth.js adapter tables (minimal set for @auth/drizzle-adapter) ---

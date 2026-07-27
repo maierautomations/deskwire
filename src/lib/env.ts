@@ -12,6 +12,15 @@ const serverEnvSchema = z.object({
   AUTH_RESEND_KEY: z.string().min(1),
   // Plain address or "Name <address>" display form, so no z.email() here.
   EMAIL_FROM: z.string().min(1),
+  // OPTIONAL on purpose until the task-15b merge: serverEnv() is
+  // all-or-nothing and parsed by health and auth on every request, but
+  // Vercel Production receives the Stripe key only right before the 15b
+  // deploy. A required field would break Production at the task-14 merge.
+  // getStripe() fails closed with a clear error while the key is missing.
+  // 15b flips this to required, together with STRIPE_WEBHOOK_SECRET. An
+  // empty string is a config error and fails loudly (min(1)), absent is
+  // the only valid "not yet" state.
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
