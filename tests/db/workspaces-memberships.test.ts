@@ -12,7 +12,10 @@ import {
 } from "../helpers/db";
 
 // One PGlite instance per test file (single-connection), migrated with the
-// real migration files — migration 0002 itself is under test here.
+// real migration files — migration 0002 itself is under test here. This file
+// covers FUNCTIONAL behaviour (atomicity, cascades, ordering); the
+// cross-tenant isolation cases (foreign-free listing, non-member lookup)
+// live in tests/tenancy/isolation.test.ts (task 12).
 let handle: TestDbHandle;
 
 beforeAll(async () => {
@@ -114,9 +117,8 @@ describe("createWorkspaceWithOwner", () => {
 });
 
 describe("listWorkspacesForUser", () => {
-  it("lists exactly the user's workspaces, oldest membership first", async () => {
+  it("lists the user's workspaces, oldest membership first", async () => {
     const alice = await createUser("alice@example.com");
-    const bob = await createUser("bob@example.com");
 
     const { workspace: first } = await createWorkspaceWithOwner(handle.db, {
       name: "Alice Eins",
@@ -126,20 +128,17 @@ describe("listWorkspacesForUser", () => {
       name: "Alice Zwei",
       userId: alice.id,
     });
-    const { workspace: foreign } = await createWorkspaceWithOwner(handle.db, {
-      name: "Bob Fremd",
-      userId: bob.id,
-    });
 
+    // Exactly Alice's two, in membership order: earlier describes created
+    // other users' workspaces in this shared instance, so exactness here
+    // still implies filtering; the dedicated foreign-free case lives in the
+    // tenancy suite.
     const listed = await listWorkspacesForUser(handle.db, alice.id);
     expect(listed.map((entry) => entry.workspace.id)).toEqual([
       first.id,
       second.id,
     ]);
     expect(listed.map((entry) => entry.role)).toEqual(["owner", "owner"]);
-    expect(listed.map((entry) => entry.workspace.id)).not.toContain(
-      foreign.id,
-    );
   });
 
   it("returns an empty list for a user without memberships", async () => {
@@ -160,18 +159,5 @@ describe("findMembership", () => {
     expect(found).not.toBeNull();
     expect(found?.role).toBe("owner");
     expect(found?.workspaceId).toBe(workspace.id);
-  });
-
-  it("returns null for a non-member", async () => {
-    const outsider = await createUser("outsider@example.com");
-    const insider = await createUser("insider@example.com");
-    const { workspace } = await createWorkspaceWithOwner(handle.db, {
-      name: "Fremder Workspace",
-      userId: insider.id,
-    });
-
-    expect(
-      await findMembership(handle.db, outsider.id, workspace.id),
-    ).toBeNull();
   });
 });

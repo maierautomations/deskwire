@@ -22,7 +22,10 @@ import {
 } from "../helpers/db";
 
 // One PGlite instance per test file (single-connection), migrated with the
-// real migration files — migration 0003 itself is under test here.
+// real migration files — migration 0003 itself is under test here. This file
+// covers invite MECHANICS (token shape, TTL, upsert, expiry, idempotency);
+// the cross-tenant isolation cases live in tests/tenancy/isolation.test.ts
+// (task 12).
 let handle: TestDbHandle;
 
 beforeAll(async () => {
@@ -69,22 +72,6 @@ describe("scopedDb invites", () => {
       before + ttlMs,
     );
     expect(invite.expiresAt.getTime()).toBeLessThanOrEqual(after + ttlMs);
-  });
-
-  it("get returns only the scope's own invite", async () => {
-    const owner = await createUser("scope-a@example.com");
-    const other = await createUser("scope-b@example.com");
-    const workspaceA = await createWorkspace("Scope A", owner.id);
-    const workspaceB = await createWorkspace("Scope B", other.id);
-
-    const created = await scopedDb(handle.db, workspaceA.id).invites.regenerate(
-      { createdBy: owner.id },
-    );
-
-    const gotA = await scopedDb(handle.db, workspaceA.id).invites.get();
-    expect(gotA?.token).toBe(created.token);
-
-    expect(await scopedDb(handle.db, workspaceB.id).invites.get()).toBeNull();
   });
 
   it("regenerate replaces the single row: old token dead, count stays one", async () => {
@@ -217,52 +204,5 @@ describe("createMembershipFromInvite", () => {
       .from(memberships)
       .where(eq(memberships.workspaceId, workspace.id));
     expect(rows).toHaveLength(1);
-  });
-});
-
-describe("tenant isolation", () => {
-  it("a workspace-A token never grants access to workspace B", async () => {
-    const ownerA = await createUser("tenant-a@example.com");
-    const ownerB = await createUser("tenant-b@example.com");
-    const joiner = await createUser("tenant-joiner@example.com");
-    const workspaceA = await createWorkspace("Tenant A", ownerA.id);
-    const workspaceB = await createWorkspace("Tenant B", ownerB.id);
-
-    const inviteA = await scopedDb(handle.db, workspaceA.id).invites.regenerate(
-      { createdBy: ownerA.id },
-    );
-    const inviteB = await scopedDb(handle.db, workspaceB.id).invites.regenerate(
-      { createdBy: ownerB.id },
-    );
-
-    // The token lookup resolves to A and only A.
-    const resolved = await findValidInviteByToken(
-      handle.db,
-      inviteA.token,
-      new Date(),
-    );
-    expect(resolved?.workspaceId).toBe(workspaceA.id);
-    expect(resolved?.workspaceId).not.toBe(workspaceB.id);
-
-    // Redeeming A's token (the full flow: lookup result feeds the write)
-    // creates a membership in A and leaves B untouched.
-    await createMembershipFromInvite(handle.db, {
-      userId: joiner.id,
-      workspaceId: resolved?.workspaceId ?? "",
-    });
-    expect(
-      (await findMembership(handle.db, joiner.id, workspaceA.id))?.role,
-    ).toBe("member");
-    expect(await findMembership(handle.db, joiner.id, workspaceB.id)).toBeNull();
-
-    // Regenerating A's link never touches B's invite row.
-    await scopedDb(handle.db, workspaceA.id).invites.regenerate({
-      createdBy: ownerA.id,
-    });
-    const inviteBAfter = await scopedDb(
-      handle.db,
-      workspaceB.id,
-    ).invites.get();
-    expect(inviteBAfter?.token).toBe(inviteB.token);
   });
 });
