@@ -3,6 +3,10 @@ import { sql } from "drizzle-orm";
 import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless";
 import ws from "ws";
 
+import {
+  handleStripeWebhook,
+  type StripeWebhookTransport,
+} from "@/lib/billing/webhook";
 import { serverEnv } from "@/lib/env";
 
 import {
@@ -106,4 +110,17 @@ export function joinWorkspaceAsMember(params: {
   workspaceId: string;
 }): Promise<Membership | null> {
   return createMembershipFromInvite(getDb(), params);
+}
+
+// Bound Stripe webhook entry (task 15a), same different-name pattern: the
+// webhook resolves the tenant FROM the delivery (stripe_customer_id), so it
+// is the one route flow that legitimately needs the raw client. This binds
+// ONLY the db; the transport deps (Stripe client, webhook secret) stay with
+// the route wrapper, which keeps this barrel free of the Stripe SDK
+// (webhook.ts imports Stripe as a type only).
+export function processStripeWebhook(
+  request: Request,
+  transport: StripeWebhookTransport,
+): Promise<Response> {
+  return handleStripeWebhook(request, { db: getDb(), ...transport });
 }

@@ -56,4 +56,21 @@ describe("serverEnv", () => {
     expect(serverEnv().DATABASE_URL).toBe(validValues.DATABASE_URL);
     expect(serverEnv().EMAIL_FROM).toBe(validValues.EMAIL_FROM);
   });
+
+  // The Stripe fields stay optional until the task-15b merge (see the
+  // comments in src/lib/env.ts): absent is the valid "not yet" state, an
+  // empty string is a config error and must fail loudly.
+  it("STRIPE_WEBHOOK_SECRET is optional while absent", async () => {
+    stubAll(validValues);
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", undefined);
+    const serverEnv = await freshServerEnv();
+    expect(serverEnv().STRIPE_WEBHOOK_SECRET).toBeUndefined();
+  });
+
+  it("empty STRIPE_WEBHOOK_SECRET fails loudly", async () => {
+    stubAll(validValues);
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", "");
+    const serverEnv = await freshServerEnv();
+    expect(() => serverEnv()).toThrowError(/STRIPE_WEBHOOK_SECRET/);
+  });
 });

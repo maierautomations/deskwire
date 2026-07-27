@@ -21,6 +21,13 @@ const serverEnvSchema = z.object({
   // empty string is a config error and fails loudly (min(1)), absent is
   // the only valid "not yet" state.
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  // Same optional-until-15b pattern and reasoning as STRIPE_SECRET_KEY:
+  // the secret arrives in Vercel only right before the 15b deploy. While it
+  // is missing, the webhook route fails closed (500 before any
+  // constructEvent call, src/lib/billing/webhook.ts); unverified processing
+  // is never a fallback. The 15b merge flips both Stripe fields to
+  // required. Empty string is a config error and fails loudly (min(1)).
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
