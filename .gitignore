@@ -32,3 +32,6 @@ dist/
 
 # claude code local settings
 .claude/settings.local.json
+
+# Playwright MCP session artifacts
+.playwright-mcp/

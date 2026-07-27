@@ -28,6 +28,26 @@ export async function listWorkspacesForUser(
     .orderBy(memberships.createdAt);
 }
 
+// Redemption write for the invite flow (task 11). The role is hardcoded to
+// 'member' — the caller cannot pass one, the code decides. onConflictDoNothing
+// on the composite PK delivers idempotency AND role preservation in one
+// mechanism: an existing membership (including an owner redeeming their own
+// workspace's link) conflicts and its row is never touched. Returns the fresh
+// row, or null when the user already was a member.
+export async function createMembershipFromInvite(
+  db: DbClient,
+  { userId, workspaceId }: { userId: string; workspaceId: string },
+): Promise<Membership | null> {
+  const [row] = await db
+    .insert(memberships)
+    .values({ userId, workspaceId, role: "member" })
+    .onConflictDoNothing({
+      target: [memberships.userId, memberships.workspaceId],
+    })
+    .returning();
+  return row ?? null;
+}
+
 export async function findMembership(
   db: DbClient,
   userId: string,

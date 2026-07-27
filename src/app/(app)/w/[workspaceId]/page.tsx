@@ -45,12 +45,20 @@ export default async function WorkspacePage({
         Dein Workspace steht. Brand-Profile und Briefings folgen in den
         nächsten Schritten.
       </p>
-      <Link
-        href="/start"
-        className="w-fit text-sm underline underline-offset-4"
-      >
-        Alle Workspaces
-      </Link>
+      <div className="flex flex-wrap gap-4">
+        <Link
+          href={`/w/${workspaceId}/settings`}
+          className="w-fit text-sm underline underline-offset-4"
+        >
+          Einstellungen
+        </Link>
+        <Link
+          href="/start"
+          className="w-fit text-sm underline underline-offset-4"
+        >
+          Alle Workspaces
+        </Link>
+      </div>
     </div>
   );
 }
