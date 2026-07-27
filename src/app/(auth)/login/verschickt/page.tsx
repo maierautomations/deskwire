@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ProofSheet } from "@/components/brand/proof-sheet";
 import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
-
-import { AuthCard } from "../../auth-card";
 
 export const metadata: Metadata = {
   title: "Link verschickt",
@@ -19,7 +18,7 @@ export default function VerifyRequestPage() {
   return (
     <div className="flex flex-col gap-6">
       <Wordmark className="text-lg" />
-      <AuthCard>
+      <ProofSheet>
         <div className="flex flex-col gap-4">
           <h1 className="font-display text-xl font-semibold">
             Sieh in dein Postfach.
@@ -32,7 +31,7 @@ export default function VerifyRequestPage() {
             <Link href="/login">Zur Anmeldung</Link>
           </Button>
         </div>
-      </AuthCard>
+      </ProofSheet>
     </div>
   );
 }
