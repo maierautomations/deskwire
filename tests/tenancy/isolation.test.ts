@@ -63,12 +63,35 @@ const entities: Record<string, EntityDeclaration> = {
       getById: (scope, id) => scope.brandProfiles.getById(id),
     },
   },
+  runs: {
+    table: "runs",
+    shape: "collection",
+    accessors: {
+      // status is a required field with no DB default (lifecycle rules are
+      // phase-1 executor territory), so the factory states it explicitly.
+      create: (scope) => scope.runs.create({ status: "running" }),
+      list: (scope) => scope.runs.list(),
+      getById: (scope, id) => scope.runs.getById(id),
+    },
+  },
   // One invite row per workspace (phase-0 decision 22); covered by the
   // hand-written "invites (singleton)" describe below.
   invites: {
     table: "workspace_invites",
     shape: "singleton",
     methods: ["get", "regenerate"],
+  },
+  // Append-only ledger (task 16, phase-0 decision 30); covered by the
+  // hand-written "creditLedger (custom)" describe below.
+  creditLedger: {
+    table: "credit_ledger",
+    shape: "custom",
+    methods: ["balance", "book"],
+    cases: [
+      "book stamps the scope's workspaceId",
+      "an empty workspace's balance is 0 even while foreign bookings exist",
+      "balance sums only the own workspace's bookings",
+    ],
   },
 };
 
@@ -230,6 +253,47 @@ describe("invites (singleton isolation)", () => {
     });
     await inv.a.scope.invites.regenerate({ createdBy: inv.a.user.id });
     expect((await inv.b.scope.invites.get())?.token).toBe(inviteB.token);
+  });
+});
+
+// Custom entity: the append-only credit ledger (task 16). Fresh tenants so
+// balances start clean regardless of other tests; cases build on each other
+// in file order (vitest runs them sequentially). Writing into a foreign
+// workspace is impossible by construction here too: book() accepts no
+// workspaceId (Omit type), the scope stamps it.
+describe("creditLedger (custom isolation)", () => {
+  let led: TwoTenants;
+
+  beforeAll(async () => {
+    led = await seedTwoTenants(handle.db);
+  });
+
+  it("book stamps the scope's workspaceId", async () => {
+    const entry = await led.a.scope.creditLedger.book({
+      delta: 10,
+      reason: "isolation seed",
+    });
+    expect(entry.workspaceId).toBe(led.a.workspace.id);
+  });
+
+  it("an empty workspace's balance is 0 even while foreign bookings exist", async () => {
+    // The sharpest form of the empty-sum trap: SUM over zero rows is NULL in
+    // Postgres, and A's rows already sit in the table. B must still get the
+    // NUMBER 0 — not null, not a string.
+    expect(await led.b.scope.creditLedger.balance()).toBe(0);
+  });
+
+  it("balance sums only the own workspace's bookings", async () => {
+    await led.a.scope.creditLedger.book({
+      delta: -3,
+      reason: "isolation burn",
+    });
+    await led.b.scope.creditLedger.book({
+      delta: 100,
+      reason: "isolation seed",
+    });
+    expect(await led.a.scope.creditLedger.balance()).toBe(7);
+    expect(await led.b.scope.creditLedger.balance()).toBe(100);
   });
 });
 

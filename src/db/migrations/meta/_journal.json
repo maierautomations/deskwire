@@ -36,6 +36,13 @@
       "when": 1785153374249,
       "tag": "0004_flat_zuras",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785185621951,
+      "tag": "0005_jittery_enchantress",
+      "breakpoints": true
     }
   ]
 }

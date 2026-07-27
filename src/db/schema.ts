@@ -171,6 +171,103 @@ export const workspaceInvites = pgTable("workspace_invites", {
     .$onUpdate(() => new Date()),
 });
 
+// --- Metering foundation (task 16) ---
+
+// run_status is a pg enum although subscription_status (task 14) is text on
+// purpose — the difference is where the vocabulary comes from. Stripe's
+// status set is EXTERNAL: Stripe documents enum additions as non-breaking
+// and ships them on pinned API versions too, so a pg enum there would force
+// migrations on someone else's schedule. Run status is OUR OWN vocabulary
+// and status transitions are deterministic code (CLAUDE.md principle 1):
+// extending it is a deliberate decision, and the migration is the correct
+// consequence of that decision, not a burden to avoid.
+export const runStatus = pgEnum("run_status", [
+  "running",
+  "succeeded",
+  "failed",
+]);
+
+// Run metering record (phase-0 decision 29): the PRD bullet is "runs table
+// with token and cost fields exists from day one" — this is the accounting
+// record only, no executor and no status-transition code in phase 0.
+// Deliberately WITHOUT briefing_id/job_id/brand_profile_version_id: those
+// tables do not exist yet and arrive as nullable FKs with their phases (no
+// FKs onto tables that do not exist). run_steps arrives with the pipeline
+// (phase 1).
+//
+// status has NO default: a default would be the first lifecycle rule
+// ("new = running"), and lifecycle rules are executor territory (phase 1) —
+// callers state the status explicitly. tokens/cost are nullable instead of
+// defaulting to 0 so "not measured" stays distinguishable from "measured
+// zero": a crashed run that never recorded usage must not look like a free
+// run (fail-closed for metering). Money and credits are integers, never
+// floats; cost_cents is name and unit. started_at defaulting to now() is
+// record-creation semantics, not a state rule: the vocabulary has no queued
+// state, so row creation IS the start.
+export const runs = pgTable(
+  "runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    status: runStatus("status").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    tokensIn: integer("tokens_in"),
+    tokensOut: integer("tokens_out"),
+    costCents: integer("cost_cents"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [index("runs_workspace_id_idx").on(table.workspaceId)],
+);
+
+// Append-only credit ledger (phase-0 decision 30): the balance is SUM(delta),
+// there is deliberately no credit_balance column on workspaces, so no dual
+// write can drift. Rows are immutable by design, which is why there is no
+// updated_at (it would suggest rows may be updated; deliberate deviation from
+// the PRD ch. 11 blanket sentence).
+//
+// reason is text, not an enum: the booking vocabulary (monthly grant,
+// purchase, consumption, correction, ...) belongs to the phase-1+ billing
+// work, and no control flow will ever branch on it — the balance is
+// SUM(delta) no matter why a booking exists; status drives gates, reason
+// documents for humans. Once real booking sources exist, narrow it via
+// $type<...> without a migration. reference is a soft pointer (a run id, an
+// invoice id, ...), nullable because e.g. an initial grant references
+// nothing, and deliberately NOT a FK: its targets vary and mostly do not
+// exist yet.
+//
+// on delete cascade is correct HERE because the workspace IS the tenant:
+// deleting a tenant must not leave scope-less rows behind (CLAUDE.md
+// principle 3). REVISIT once billing hangs on real money — an accounting
+// journal is normally not deleted along with its subject.
+export const creditLedger = pgTable(
+  "credit_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    delta: integer("delta").notNull(),
+    reason: text("reason").notNull(),
+    reference: text("reference"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("credit_ledger_workspace_id_idx").on(table.workspaceId)],
+);
+
 // Deliberate phase-0 stub: establishes the workspace-scoped table pattern.
 // Real brand profile fields (versions, editor) arrive in phase 1.
 export const brandProfiles = pgTable(

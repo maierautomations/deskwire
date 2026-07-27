@@ -39,7 +39,15 @@ export {
   type WorkspaceInvite,
 } from "./invites";
 export type { WorkspaceForUser } from "./memberships";
-export type { DbClient, NewBrandProfile, ScopedDb } from "./scoped";
+export type {
+  CreditLedgerEntry,
+  DbClient,
+  NewBrandProfile,
+  NewCreditLedgerEntry,
+  NewRun,
+  Run,
+  ScopedDb,
+} from "./scoped";
 export { scopedDb } from "./scoped";
 export type {
   CreateWorkspaceWithOwnerParams,
