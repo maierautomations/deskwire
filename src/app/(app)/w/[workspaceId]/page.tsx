@@ -42,10 +42,16 @@ export default async function WorkspacePage({
         </h1>
       </div>
       <p className="max-w-prose text-sm text-ink-soft">
-        Dein Workspace steht. Brand-Profile und Briefings folgen in den
-        nächsten Schritten.
+        Dein Workspace steht. Marken-Profile kannst du schon anlegen,
+        Briefings folgen in den nächsten Schritten.
       </p>
       <div className="flex flex-wrap gap-4">
+        <Link
+          href={`/w/${workspaceId}/brand-profiles`}
+          className="w-fit text-sm underline underline-offset-4"
+        >
+          Marken-Profile
+        </Link>
         <Link
           href={`/w/${workspaceId}/settings`}
           className="w-fit text-sm underline underline-offset-4"
