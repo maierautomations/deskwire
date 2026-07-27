@@ -79,7 +79,7 @@ Kein "AI Writer". Die Differenzierung liegt im Workflow und in der Kontrolle:
 
 Strikter Schnitt. Jede Phase endet mit einem Demo-Kriterium. Keine Phase beginnt, bevor die vorherige ihr Kriterium erfüllt.
 
-### Phase 0: Foundation
+### Phase 0: Foundation — erledigt (27.07.2026)
 
 **Ziel:** Ein leeres, aber produktionsfähiges Fundament.
 
@@ -90,6 +90,8 @@ Strikter Schnitt. Jede Phase endet mit einem Demo-Kriterium. Keine Phase beginnt
 - Usage-Metering-Fundament: Runs-Tabelle mit Token- und Kostenfeldern existiert ab Tag eins.
 
 **Demo-Kriterium:** Zwei getrennte Workspaces, Login, ein Testeintrag pro Workspace, nachweislich keine Datenüberschneidung, ein Testabo via Stripe-Testmode.
+
+**Status: erledigt.** Abnahme bestanden am 27.07.2026 (14-Punkte-Checkliste in docs/phase-0-plan.md, Tag v0.1.0-phase0). Bewusste Abweichungen vom Bullet-Wortlaut: OAuth vertagt (Entscheidungs-Log Nr. 2), Single-Package statt Monorepo (Nr. 8).
 
 ### Phase 1: MVP "Briefing zu Artikel"
 
@@ -350,6 +352,10 @@ Fachliche Kerntabellen, alle mit `id`, `workspace_id`, `created_at`, `updated_at
 5. Paketmanager: npm statt pnpm. Begründung: Vertrautheit und Standard-Tooling des Betreibers. Entschieden vor Task 1a (Phase 0).
 6. Root-Zuordnung offen (26.07.2026): `/` bleibt bis zum Landingpage-Einschub unbelegt und liefert die deutsche 404. `(app)` und `(marketing)` dürfen nie gleichzeitig eine page.tsx auf `/` haben; technisch abgesichert durch `tests/app/route-conflicts.test.ts`, denn Turbopack meldet den Konflikt seit 16.2.11 nicht mehr als Build-Fehler.
 7. `/start` ist der dauerhafte Einstiegspunkt nach dem Login (26.07.2026). Begründung: semantisch neutral, der Pfad bedeutet nur „Einstieg nach Login" — heute liegt dort die Workspace-Liste, ab Phase 1 voraussichtlich ein Redirect in den zuletzt genutzten Workspace, ein beschreibender Pfad müsste dann umziehen.
+8. Single-Package statt Monorepo (27.07.2026): eine App braucht keine npm-Workspaces; das Wort „Monorepo" im Phase-0-Bullet ist bewusst nicht umgesetzt. Bei echtem Bedarf (zweites Paket) sind npm-Workspaces nachrüstbar, ohne die App zu bewegen.
+9. next-auth 5.0.0-beta.32 exakt gepinnt (27.07.2026): Auth.js ist im Maintenance-Modus (Übernahme durch das Better-Auth-Team), v5 bleibt Beta. Konsequenz: Upgrades nur bewusst und mit Peer-Gleichstand von next-auth und @auth/drizzle-adapter (beide auf derselben @auth/core-Version); Better Auth wird als Wechseloption beobachtet, die Session-Strategie database bleibt.
+10. credit_ledger bereits in Phase 0 (27.07.2026): Nutzer-Vorgabe über den Phase-0-Bullet hinaus, der nur die runs-Tabelle verlangt. Append-only, Saldo = SUM(delta), bewusst kein credit_balance-Feld am Workspace (kein Dual-Write-Drift, solange nichts Credits verbraucht).
+11. STRIPE_SECRET_KEY und STRIPE_WEBHOOK_SECRET bleiben optional in serverEnv (27.07.2026): die ursprünglich für den Task-15b-Merge angekündigte Pflicht-Wanderung ist überholt und wird revidiert, nicht eingelöst — beide Secrets liegen ausschließlich im Vercel-Production-Scope (keine Preview-Webhooks in Phase 0), und Pflichtfelder würden jedes Preview-Deployment an der Env-Validierung brechen (Health 503, Login tot). Fail-closed sitzt in getStripe() und im Webhook-Route-Guard.
 
 **Offen:**
 

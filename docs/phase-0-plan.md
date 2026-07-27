@@ -252,19 +252,21 @@ Größen: S ≈ 30 min, M ≈ 45 min, L ≈ 60 min (Obergrenze). Tasks mit a/b s
 
 ## e) Abnahme-Checkliste für das Demo-Kriterium
 
+**Abnahme bestanden 27.07.2026** (Betreiber-Durchlauf auf Production, Befunde verdichtet im CLAUDE.md-Stand-Eintrag zu Task 17).
+
 Basis: Production-URL. **Ausnahme Schritte 5 und 7:** User B kann auf Production nicht einloggen (Resend-Sandbox sendet nur an die Signup-Adresse, Dev-Log-Login ist nie in Vercel aktiv) — diese zwei Schritte laufen lokal (`npm run dev` mit `.env.local`, deren `DATABASE_URL` auf die Produktions-DB zeigt, Login via Dev-Log). Die Datenisolation wird damit trotzdem gegen dieselbe Produktions-DB bewiesen. User A = Resend-Signup-Adresse (dominik@maierai.com).
 
-1. [ ] `/api/health` liefert ok inklusive DB-Ping.
-2. [ ] `/login` öffnen, Magic Link anfordern → Mail kommt auf Deutsch an, Login klappt, Session-Row in `sessions`; Abmelden und geschützte Route ohne Session aufrufen → Redirect auf `/login`.
-3. [ ] Workspace „Redaktion Alpha" anlegen; unter Marken-Profile den Eintrag „Profil Alpha" anlegen → erscheint in der Liste.
-4. [ ] Zweiten Workspace „Redaktion Beta" anlegen (Umschalter zeigt beide); dort „Profil Beta" anlegen.
-5. [ ] Einladungslink in „Redaktion Beta" erzeugen; lokal User B via Dev-Log-Login über den Link aufnehmen → landet als member in Redaktion Beta; abgelaufenen/kaputten Token testen → deutsche Fehlerseite.
-6. [ ] Isolation im UI: In Redaktion Alpha ist nur „Profil Alpha" sichtbar, in Beta nur „Profil Beta" — keine Überschneidung.
-7. [ ] URL-Manipulation (lokal als User B): `/w/<id-von-Alpha>/brand-profiles` aufrufen → 404.
-8. [ ] Isolation an der DB: `select name, workspace_id from brand_profiles` (Drizzle Studio/Neon-Console) → jede Zeile exakt einem Workspace zugeordnet; Tenancy-Suite lokal und in CI grün, CI nachweislich ohne `DATABASE_URL`.
-9. [ ] Stripe-Testmode: Produkt + Preis + Test-Customer im Dashboard, `stripe_customer_id` an „Redaktion Alpha" hinterlegt, Test-Abo anlegen → Webhook feuert, Abo-Badge in Alpha zeigt „aktiv/Testphase"; „Redaktion Beta" zeigt „kein Abo".
-10. [ ] Test-Abo im Dashboard kündigen → Status von Alpha wechselt (Sync-Beweis in beide Richtungen).
-11. [ ] Ratelimit: viermal hintereinander Magic Link anfordern → deutsche Hinweis-Meldung statt Mail.
-12. [ ] Sentry: auf einem Preview (oder Production mit temporär gesetztem `DEBUG_SENTRY_ENABLED`, danach entfernen) Testfehler auslösen → Event mit Source-Map-Stacktrace im Projekt.
-13. [ ] `runs` und `credit_ledger` existieren in der Produktions-DB (Migrationen 0000 bis 0005 angewendet), zugehörige Tests und Isolationssuite grün.
-14. [ ] CI auf main grün, CLAUDE.md-„Stand" und Kommandos aktualisiert, PRD-Entscheidungs-Log ergänzt, Tag `v0.1.0-phase0` gesetzt.
+1. [x] `/api/health` liefert ok inklusive DB-Ping.
+2. [x] `/login` öffnen, Magic Link anfordern → Mail kommt auf Deutsch an, Login klappt, Session-Row in `sessions`; Abmelden und geschützte Route ohne Session aufrufen → Redirect auf `/login`.
+3. [x] Workspace „Redaktion Alpha" anlegen; unter Marken-Profile den Eintrag „Profil Alpha" anlegen → erscheint in der Liste.
+4. [x] Zweiten Workspace „Redaktion Beta" anlegen (Umschalter zeigt beide); dort „Profil Beta" anlegen.
+5. [x] Einladungslink in „Redaktion Beta" erzeugen; lokal User B via Dev-Log-Login über den Link aufnehmen → landet als member in Redaktion Beta; abgelaufenen/kaputten Token testen → deutsche Fehlerseite.
+6. [x] Isolation im UI: In Redaktion Alpha ist nur „Profil Alpha" sichtbar, in Beta nur „Profil Beta" — keine Überschneidung.
+7. [x] URL-Manipulation (lokal als User B): `/w/<id-von-Alpha>/brand-profiles` aufrufen → 404.
+8. [x] Isolation an der DB: `select name, workspace_id from brand_profiles` (Drizzle Studio/Neon-Console) → jede Zeile exakt einem Workspace zugeordnet; Tenancy-Suite lokal und in CI grün, CI nachweislich ohne `DATABASE_URL`.
+9. [x] Stripe-Testmode: Produkt + Preis + Test-Customer im Dashboard, `stripe_customer_id` an „Redaktion Alpha" hinterlegt, Test-Abo anlegen → Webhook feuert, Abo-Badge in Alpha zeigt „aktiv/Testphase"; „Redaktion Beta" zeigt „kein Abo".
+10. [x] Test-Abo im Dashboard kündigen → Status von Alpha wechselt (Sync-Beweis in beide Richtungen).
+11. [x] Ratelimit: viermal hintereinander Magic Link anfordern → deutsche Hinweis-Meldung statt Mail.
+12. [x] Sentry: auf einem Preview (oder Production mit temporär gesetztem `DEBUG_SENTRY_ENABLED`, danach entfernen) Testfehler auslösen → Event mit Source-Map-Stacktrace im Projekt.
+13. [x] `runs` und `credit_ledger` existieren in der Produktions-DB (Migrationen 0000 bis 0005 angewendet), zugehörige Tests und Isolationssuite grün.
+14. [x] CI auf main grün, CLAUDE.md-„Stand" und Kommandos aktualisiert, PRD-Entscheidungs-Log ergänzt, Tag `v0.1.0-phase0` gesetzt (Tag: Betreiber-Akt nach diesem Commit).

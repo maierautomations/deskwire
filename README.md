@@ -6,22 +6,31 @@ SaaS-Web-App, das KI-Interface für Redaktionen. Produktanforderungen: [docs/PRD
 
 Voraussetzungen: Node 24 (siehe `.nvmrc`), npm.
 
+### Lokales Setup
+
 ```bash
-npm ci             # Dependencies installieren
-npm run dev        # lokale Entwicklung auf http://localhost:3000
+npm install          # Dependencies installieren (CI nutzt npm ci gegen das Lockfile)
+npx vercel link      # einmalig: Repo mit dem Vercel-Projekt verknüpfen
+npx vercel env pull  # schreibt .env.local (gitignored)
+npm run db:migrate   # Migrationen anwenden (läuft über DATABASE_URL_UNPOOLED)
+npm run dev          # lokale Entwicklung auf http://localhost:3000
+```
+
+Begleitend:
+
+```bash
 npm run lint       # ESLint
 npm run typecheck  # tsc --noEmit
 npm test           # Vitest
 ```
 
+**Dev-Branch-Konvention:** Lokale Entwicklung läuft ausschließlich gegen den Neon-Dev-Branch, nie gegen die Produktions-DB. Die Neon-Integration setzt `DATABASE_URL`/`DATABASE_URL_UNPOOLED` nur in Production statisch, `vercel env pull` schreibt sie deshalb nicht nach `.env.local`; beide Zeilen leben in der lokalen `.env` und zeigen auf den Dev-Branch. Der Wechsel der lokalen `DATABASE_URL` auf Production ist ein bewusster Betreiber-Akt, ausschließlich für Migrations-Nachzüge und die dafür vorgesehenen Abnahme-Schritte (siehe CLAUDE.md).
+
+**Zweiter Test-User lokal:** Die Resend-Sandbox stellt Mails nur an die Signup-Adresse zu. Für Zweit-User-Tests (Einladungslinks, Isolation) `AUTH_EMAIL_DEV_LOG=1` in `.env.local` setzen, der Magic Link landet dann im Server-Log statt im Postfach. Greift per Code-Guard nur bei `NODE_ENV=development` und ohne gesetzte Vercel-Umgebung, in Vercel ist das Flag wirkungslos.
+
 ### Umgebungsvariablen
 
-Die Wahrheit liegt im Vercel-Dashboard, gepflegt pro Environment (Production, Preview, Development). Lokal werden die Werte gezogen, nie von Hand gepflegt:
-
-```bash
-npx vercel link      # einmalig: Repo mit dem Vercel-Projekt verknüpfen
-npx vercel env pull  # schreibt .env.local (gitignored)
-```
+Die Wahrheit liegt im Vercel-Dashboard, gepflegt pro Environment (Production, Preview, Development). Lokal werden die Werte gezogen, nie von Hand gepflegt (Ausnahme: die beiden `DATABASE_URL`-Zeilen, siehe Dev-Branch-Konvention oben).
 
 Niemals echte Werte committen. Jede neue Variable wird in dem Task, der sie einführt, in `.env.example` dokumentiert (Name plus Kommentar, ohne Wert).
 
@@ -34,7 +43,7 @@ Fachliche Daten werden ausschließlich über die gescopten Query-Helper gelesen 
 - Push auf `main` deployt automatisch nach Production (Vercel).
 - Jede Pull Request bekommt automatisch ein Preview-Deployment mit eigener URL.
 - Branch Protection auf `main`: der CI-Job (Lint, Typecheck, Tests) und der Vercel-Build sind Required Checks. Die CI baut bewusst nicht, Next-Build-Fehler fängt erst der Vercel-Check vor dem Merge ab.
-- Health-Check: `GET /api/health` liefert `{ ok: true, sha: <Commit-SHA> }`, ab Task 4 zusätzlich mit DB-Ping.
+- Health-Check: `GET /api/health` liefert `{ ok: true, sha: <Commit-SHA> }` inklusive DB-Ping; scheitert der Ping, antwortet die Route 503 ohne Details und meldet den Fehler an Sentry.
 
 ### Stripe-Testmode-Setup
 
