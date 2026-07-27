@@ -4,6 +4,7 @@ import type { Membership } from "@/db";
 import {
   createWorkspaceForUser,
   parseWorkspaceName,
+  postLoginSurface,
   requireWorkspaceMembership,
   WORKSPACE_NAME_INVALID_MESSAGE,
 } from "@/lib/workspace";
@@ -45,6 +46,26 @@ describe("parseWorkspaceName", () => {
     const name = "x".repeat(80);
     expect(parseWorkspaceName(` ${name} `)).toEqual({ ok: true, name });
   });
+});
+
+describe("postLoginSurface", () => {
+  // Loop-freeness invariant (task 10b): /start redirects to /onboarding
+  // exactly when this returns "onboarding"; /onboarding itself never
+  // redirects — it also serves members creating another workspace (operator
+  // decision, deviating from the original 10b wording). Because only ONE of
+  // the two surfaces ever redirects and it branches on this single function,
+  // a redirect cycle between them is structurally impossible. If /onboarding
+  // ever gets a redirect again, it must branch on this same function.
+  it("sends a user without memberships to onboarding", () => {
+    expect(postLoginSurface(0)).toBe("onboarding");
+  });
+
+  it.each([[1], [2], [7]])(
+    "keeps a user with %i workspace(s) on the start list",
+    (count) => {
+      expect(postLoginSurface(count)).toBe("start");
+    },
+  );
 });
 
 describe("requireWorkspaceMembership", () => {

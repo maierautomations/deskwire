@@ -26,8 +26,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Protected app routes. Route groups never appear in URLs, so this lists
-  // real paths — task 10b MUST extend it (/onboarding, /w/...) when its
-  // routes land under (app). A missing entry only loses this comfort
-  // redirect, never security: the (app) layout still guards.
-  matcher: ["/start"],
+  // real paths. A missing entry only loses this comfort redirect, never
+  // security: the (app) layout and the /w/[workspaceId] layout still guard.
+  matcher: ["/start", "/onboarding", "/w/:path*"],
 };
