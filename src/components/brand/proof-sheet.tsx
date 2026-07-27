@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 
-// The proof sheet: auth card framed by four trim marks (brand book 5.4/5.5,
+// The proof sheet: a card framed by four trim marks (brand book 5.4/5.5,
 // motif family 3). Marks sit just outside the sheet in --line, one level of
 // punctuation, never a wallpaper.
 const TRIM_MARK = "pointer-events-none absolute h-3 w-3 border-line";
 
-export function AuthCard({
+export function ProofSheet({
   className,
   children,
 }: {

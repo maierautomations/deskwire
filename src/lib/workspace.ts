@@ -31,6 +31,26 @@ export function parseWorkspaceName(value: unknown): WorkspaceNameResult {
   return { ok: true, name: parsed.data };
 }
 
+export type PostLoginSurface = "onboarding" | "start";
+
+// The single truth for where a signed-in user lands (task 10b). Loop-freeness
+// invariant: /start redirects to /onboarding exactly when this returns
+// "onboarding" (zero memberships); /onboarding itself never redirects — it
+// also serves members creating another workspace (operator decision, deviating
+// from the original 10b wording: the acceptance demo needs a second workspace
+// in the same switcher). One deciding function, one redirecting side — a
+// redirect cycle between the two surfaces is structurally impossible.
+export function postLoginSurface(workspaceCount: number): PostLoginSurface {
+  return workspaceCount === 0 ? "onboarding" : "start";
+}
+
+// German role labels, one term per thing (brand book 4.3 rule 5). Role is a
+// plain column in phase 0; permission logic stays phase 4 (decision no. 21).
+export const MEMBERSHIP_ROLE_LABELS: Record<Membership["role"], string> = {
+  owner: "Inhaber",
+  member: "Mitglied",
+};
+
 const uuidSchema = z.uuid();
 
 export interface RequireWorkspaceMembershipDeps {

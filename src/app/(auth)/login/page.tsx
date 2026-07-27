@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { ProofSheet } from "@/components/brand/proof-sheet";
 import { Wordmark } from "@/components/brand/wordmark";
 import {
   AFTER_LOGIN_DEFAULT,
   sanitizeCallbackPath,
 } from "@/lib/auth/login-validation";
 
-import { AuthCard } from "../auth-card";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
@@ -33,9 +33,9 @@ export default async function LoginPage({
   return (
     <div className="flex flex-col gap-6">
       <Wordmark className="text-lg" />
-      <AuthCard>
+      <ProofSheet>
         <LoginForm callbackUrl={callbackUrl} />
-      </AuthCard>
+      </ProofSheet>
     </div>
   );
 }
