@@ -86,10 +86,12 @@ const entities: Record<string, EntityDeclaration> = {
   brandProfileVersions: {
     table: "brand_profile_versions",
     shape: "custom",
-    methods: ["getById", "listByProfile"],
+    methods: ["getById", "getLatest", "listByProfile"],
     cases: [
       "listByProfile never returns a foreign workspace's versions",
       "getById returns null for a foreign workspace's version row",
+      "getLatest returns null for a foreign workspace's profile",
+      "getLatest follows the own workspace's newest version",
       "a save in one workspace creates no version in the other",
     ],
   },
@@ -354,6 +356,26 @@ describe("brandProfileVersions (custom isolation)", () => {
         (entry) => entry.version,
       ),
     ).toEqual([1]);
+  });
+
+  it("getLatest returns null for a foreign workspace's profile", async () => {
+    // Scope-blind like listByProfile: B asking for A's profile id gets
+    // nothing, not A's current version — and that current version is what the
+    // editor's machine line shows and what task 31 will pin a run to.
+    expect(await ver.b.scope.brandProfileVersions.getLatest(profileA)).toBeNull();
+    expect(
+      (await ver.a.scope.brandProfileVersions.getLatest(profileA))?.workspaceId,
+    ).toBe(ver.a.workspace.id);
+  });
+
+  it("getLatest follows the own workspace's newest version", async () => {
+    // A stands at version 2 after the previous case; B never saved again.
+    const latestA = await ver.a.scope.brandProfileVersions.getLatest(profileA);
+    expect(latestA?.version).toBe(2);
+    expect(latestA?.snapshot.name).toBe("Profil A, geändert");
+    expect(
+      (await ver.b.scope.brandProfileVersions.getLatest(profileB))?.version,
+    ).toBe(1);
   });
 });
 

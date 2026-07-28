@@ -10,7 +10,8 @@ import { requireWorkspaceMembership } from "@/lib/workspace";
 
 import {
   BRAND_PROFILE_FORBIDDEN_MESSAGE,
-  parseBrandProfileInput,
+  parseBrandProfileDescription,
+  parseBrandProfileName,
 } from "./input";
 import { brandProfileFieldsSchema, parseBrandProfileFields } from "./schema";
 
@@ -18,9 +19,9 @@ import { brandProfileFieldsSchema, parseBrandProfileFields } from "./schema";
 // existence oracle (phase-0 decision 19, wording pattern from task 11/13).
 export const BRAND_PROFILE_NOT_FOUND_MESSAGE =
   "Dieses Marken-Profil gibt es nicht.";
-// Deliberately coarse: the per-field echo needs the form and arrives with the
-// editor (task 20a). Until then a rejected save says what to do, not which
-// Zod issue fired.
+// The coarse fallback for a broken patch (a direct POST, a rolled-back
+// deployment). The editor's per-field echo is built at the form boundary
+// (task 20a) from the same schema nodes this function parses with.
 export const BRAND_PROFILE_FIELDS_INVALID_MESSAGE =
   "Die Angaben im Profil passen nicht. Bitte prüfe die Felder und speichere erneut.";
 export const BRAND_PROFILE_AKTIV_INVALID_MESSAGE =
@@ -35,7 +36,8 @@ const BRAND_PROFILE_FIELD_KEYS: ReadonlySet<string> = new Set(
 const brandProfileIdSchema = z.uuid();
 // Strict boolean: an HTML checkbox arrives as "on" or not at all, and turning
 // that into a boolean is the action's job (task 20a). The library must not
-// guess what a missing value meant.
+// guess what a missing value meant — and "not sent at all" is expressed by
+// omitting rawAktiv, not by sending undefined.
 const brandProfileAktivSchema = z.boolean();
 
 // A partial patch of field GROUPS, not of single values: an absent group stays
@@ -43,6 +45,27 @@ const brandProfileAktivSchema = z.boolean();
 // sections (tasks 20a/20b), and a full-replacement contract would make the
 // first section silently wipe what the second one saves.
 export type BrandProfileFieldsPatch = Record<string, unknown>;
+
+// ONE patch rule for the whole save (task 20a): name, description and aktiv
+// follow exactly the same semantics as the field groups. An ABSENT key stays
+// unchanged, a PRESENT key replaces — including with an empty value, which is
+// how the editor clears a description. Presence is decided by the key being
+// there at all, so `rawAktiv: undefined` is a present-but-broken value and
+// fails loudly instead of silently flipping the flag to false.
+//
+// This is what lets a section save only what it owns without carrying the
+// other sections' values as hidden fields (a stale-data trap) and without a
+// second read before the membership gate: the row this function already holds
+// after the gate supplies every absent value.
+export interface SaveBrandProfileInput {
+  userId: string;
+  workspaceId: string;
+  brandProfileId: string;
+  rawName?: unknown;
+  rawDescription?: unknown;
+  rawAktiv?: unknown;
+  rawFields: unknown;
+}
 
 function isFieldsPatch(value: unknown): value is BrandProfileFieldsPatch {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -60,12 +83,15 @@ export type SaveBrandProfileResult =
 
 export interface SaveBrandProfileDeps {
   requireMembership: typeof requireWorkspaceMembership;
-  // Only the stored field set is needed: it is the merge base. Name,
-  // description and aktiv always come from the caller.
+  // The stored row is both the merge base for the field groups and the source
+  // of every identity value the patch left out.
   getBrandProfile: (
     workspaceId: string,
     brandProfileId: string,
-  ) => Promise<Pick<BrandProfile, "fields"> | null>;
+  ) => Promise<Pick<
+    BrandProfile,
+    "name" | "description" | "aktiv" | "fields"
+  > | null>;
   saveBrandProfileRow: (
     workspaceId: string,
     params: SaveBrandProfileRowParams,
@@ -82,10 +108,10 @@ const saveDeps: SaveBrandProfileDeps = {
 
 // Core logic of the brand profile editor save (pattern:
 // createBrandProfileForMember). Order is deliberate and everything that can be
-// decided without the database is decided first: id shape, name, description,
-// aktiv and the patch's top-level keys, then the membership gate (server
-// actions are public POST endpoints), then the profile read, then the merged
-// Zod boundary, then the transactional write.
+// decided without the database is decided first: id shape, then every value
+// the patch actually carries, then the patch's top-level group keys, then the
+// membership gate (server actions are public POST endpoints), then the profile
+// read, then the merged Zod boundary, then the transactional write.
 //
 // The merge base is the PARSED stored field set, never the raw column: after a
 // future schema_version bump the read migration in parseBrandProfileFields
@@ -93,15 +119,7 @@ const saveDeps: SaveBrandProfileDeps = {
 // undo that migration. It also makes the merge result shape-identical to the
 // snapshot the version row stores.
 export async function saveBrandProfile(
-  input: {
-    userId: string;
-    workspaceId: string;
-    brandProfileId: string;
-    rawName: unknown;
-    rawDescription: unknown;
-    rawAktiv: unknown;
-    rawFields: unknown;
-  },
+  input: SaveBrandProfileInput,
   deps: SaveBrandProfileDeps = saveDeps,
 ): Promise<SaveBrandProfileResult> {
   // A malformed id would otherwise reach Postgres as a raw string and throw
@@ -111,14 +129,32 @@ export async function saveBrandProfile(
     return { status: "not_found", message: BRAND_PROFILE_NOT_FOUND_MESSAGE };
   }
 
-  const parsed = parseBrandProfileInput(input.rawName, input.rawDescription);
-  if (!parsed.ok) {
-    return { status: "invalid", message: parsed.message };
-  }
+  // Zod first, on exactly the values the caller supplied. Absent identity
+  // fields are not validated because they are not being written.
+  const identity: { name?: string; description?: string | null; aktiv?: boolean } =
+    {};
+  const descriptionGiven = "rawDescription" in input;
 
-  const aktiv = brandProfileAktivSchema.safeParse(input.rawAktiv);
-  if (!aktiv.success) {
-    return { status: "invalid", message: BRAND_PROFILE_AKTIV_INVALID_MESSAGE };
+  if ("rawName" in input) {
+    const parsed = parseBrandProfileName(input.rawName);
+    if (!parsed.ok) {
+      return { status: "invalid", message: parsed.message };
+    }
+    identity.name = parsed.value;
+  }
+  if (descriptionGiven) {
+    const parsed = parseBrandProfileDescription(input.rawDescription);
+    if (!parsed.ok) {
+      return { status: "invalid", message: parsed.message };
+    }
+    identity.description = parsed.value;
+  }
+  if ("rawAktiv" in input) {
+    const parsed = brandProfileAktivSchema.safeParse(input.rawAktiv);
+    if (!parsed.success) {
+      return { status: "invalid", message: BRAND_PROFILE_AKTIV_INVALID_MESSAGE };
+    }
+    identity.aktiv = parsed.data;
   }
 
   // Unknown group names are rejected BEFORE the database is touched. The
@@ -165,9 +201,14 @@ export async function saveBrandProfile(
 
   const result = await deps.saveBrandProfileRow(input.workspaceId, {
     brandProfileId: input.brandProfileId,
-    name: parsed.name,
-    description: parsed.description,
-    aktiv: aktiv.data,
+    // A validated name is never empty and a validated aktiv is never
+    // undefined, so ?? falls through exactly when the key was absent. The
+    // description needs the explicit flag: null is a legitimate written value.
+    name: identity.name ?? profile.name,
+    description: descriptionGiven
+      ? (identity.description ?? null)
+      : profile.description,
+    aktiv: identity.aktiv ?? profile.aktiv,
     fields: merged.data,
   });
 

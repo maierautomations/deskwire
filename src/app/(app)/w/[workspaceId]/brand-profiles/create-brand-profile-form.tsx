@@ -17,15 +17,23 @@ const initialState: CreateBrandProfileFormState = { status: "idle" };
 // Client side of the profile creation flow (pattern: onboarding form).
 // Expected failures render inline in the functional error color and echo the
 // typed values; success renders nothing here — the revalidated list shows the
-// new entry. The maxLength attributes are progressive-enhancement comfort;
-// the truth is the Zod boundary in @/lib/brand-profile/create (not imported
-// here: its default deps would pull the server db client into the client
-// bundle — the module is deliberately reachable only by its explicit path,
-// there is no barrel that could make that import look harmless).
+// new entry.
+//
+// The maxLength attributes are progressive-enhancement comfort and arrive as
+// props from the Zod boundary's constants: no second set of numbers in this
+// markup, and no lib import either. Importing them would pull zod (from the
+// schema modules) into the client bundle, and importing the create logic
+// would pull the server db client — measured after the build, not assumed
+// (task 20a); there is no barrel that could make such an import look
+// harmless.
 export function CreateBrandProfileForm({
   workspaceId,
+  nameMaxLength,
+  descriptionMaxLength,
 }: {
   workspaceId: string;
+  nameMaxLength: number;
+  descriptionMaxLength: number;
 }) {
   const [state, formAction, pending] = useActionState(
     createBrandProfileAction,
@@ -42,7 +50,7 @@ export function CreateBrandProfileForm({
           name="name"
           type="text"
           required
-          maxLength={80}
+          maxLength={nameMaxLength}
           placeholder="Hausstil Print"
           className="h-9"
           defaultValue={state.status === "error" ? state.name : undefined}
@@ -60,7 +68,7 @@ export function CreateBrandProfileForm({
           id="brand-profile-description"
           name="description"
           type="text"
-          maxLength={500}
+          maxLength={descriptionMaxLength}
           placeholder="Tonalität und Regeln für Print-Artikel"
           className="h-9"
           defaultValue={

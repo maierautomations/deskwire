@@ -12,6 +12,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import {
   createProfileWithFirstVersion,
   saveProfileWithVersion,
+  selectLatestBrandProfileVersion,
   type SaveBrandProfileRowParams,
 } from "./brand-profiles";
 import { generateInviteToken, inviteExpiresAt } from "./invites";
@@ -110,8 +111,15 @@ export function scopedDb(db: DbClient, workspaceId: string) {
         return row ?? null;
       },
 
-      // Newest first: the editor shows the current version number (task 20a),
-      // and a history list reads top-down.
+      // The current version of one profile: number plus created_at are what
+      // the editor's machine line states (task 20a). Deferred in task 19
+      // because it had no caller; it arrives now WITH its caller, and it
+      // reuses the same query the save transaction uses, so there is never a
+      // second hand-written "latest".
+      getLatest: (brandProfileId: string) =>
+        selectLatestBrandProfileVersion(db, workspaceId, brandProfileId),
+
+      // Newest first: a history list reads top-down.
       listByProfile: (brandProfileId: string) =>
         db
           .select()

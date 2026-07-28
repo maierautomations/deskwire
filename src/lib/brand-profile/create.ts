@@ -59,17 +59,3 @@ export async function createBrandProfileForMember(
   });
   return { status: "created" };
 }
-
-// German date for the profile list, pinned to Europe/Berlin so server
-// rendering (Vercel runs UTC) cannot shift the shown day (pattern:
-// formatInviteExpiry). Machine voice, used in mono context only.
-const createdAtFormat = new Intl.DateTimeFormat("de-DE", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Europe/Berlin",
-});
-
-export function formatBrandProfileDate(date: Date): string {
-  return createdAtFormat.format(date);
-}

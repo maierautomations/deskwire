@@ -5,7 +5,6 @@ import { findMembership } from "@/db/memberships";
 import { scopedDb } from "@/db/scoped";
 import {
   createBrandProfileForMember,
-  formatBrandProfileDate,
   type CreateBrandProfileDeps,
 } from "@/lib/brand-profile/create";
 import {
@@ -245,15 +244,5 @@ describe("createBrandProfileForMember against PGlite", () => {
       name: "Hausstil Print",
       description: "Tonalität und Regeln für Print-Artikel",
     });
-  });
-});
-
-describe("formatBrandProfileDate", () => {
-  it("formats in German with the day pinned to Europe/Berlin", () => {
-    // 23:30 UTC on New Year's Eve is already January 1st in Berlin — a UTC
-    // server (Vercel) must not shift the shown day.
-    expect(formatBrandProfileDate(new Date("2026-12-31T23:30:00Z"))).toBe(
-      "1. Januar 2027",
-    );
   });
 });
