@@ -1,4 +1,5 @@
 import type { BrandProfileFields } from "@/lib/brand-profile/schema";
+import type { BrandProfileSnapshot } from "@/lib/brand-profile/snapshot";
 
 // A fully populated profile with EVERY group filled, written in canonical form
 // (trimmed, deduplicated, every value within its limit). Canonical on purpose:
@@ -45,4 +46,14 @@ export const FULL_BRAND_PROFILE_FIELDS: BrandProfileFields = {
     "Erster Beispieltext, Absatz eins.\n\nAbsatz zwei mit Umlauten: ä ö ü ß.",
     "Zweiter Beispieltext, eine einzelne Zeile.",
   ],
+};
+
+// The same profile as a version snapshot (task 19): the whole object that
+// brand_profile_versions stores and hashes. Canonical like the field set
+// above, so it round-trips through jsonb and re-hashes identically.
+export const FULL_BRAND_PROFILE_SNAPSHOT: BrandProfileSnapshot = {
+  name: "Hausstil Wirtschaft",
+  description: "Regeln für Wirtschaftsartikel",
+  aktiv: true,
+  fields: FULL_BRAND_PROFILE_FIELDS,
 };

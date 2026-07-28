@@ -8,15 +8,17 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
 // Relative imports on purpose: drizzle-kit loads this file directly and its
-// resolver is not guaranteed to honor the "@/" tsconfig alias. Both are
+// resolver is not guaranteed to honor the "@/" tsconfig alias. All of them are
 // type-only, so this module stays free of runtime imports.
 import type { StripeSubscriptionStatus } from "../lib/billing/subscription-status";
 import type { BrandProfileFieldsInput } from "../lib/brand-profile/schema";
+import type { BrandProfileSnapshotStored } from "../lib/brand-profile/snapshot";
 
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -309,4 +311,51 @@ export const brandProfiles = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [index("brand_profiles_workspace_id_idx").on(table.workspaceId)],
+);
+
+// Brand profile versioning (task 19, phase-1 Vorgabe 8): an append-only
+// history of the WHOLE profile object. Every content-changing save writes one
+// row; two identical CONSECUTIVE saves deduplicate against the LATEST version
+// only, so A -> B -> A is three versions and versions 1 and 3 legitimately
+// share a content_hash (deduplicating against ALL versions would let a run
+// pinned to "version 1" lose its meaning in time). Like credit_ledger this
+// table has no updated_at: rows are immutable by design.
+//
+// Writes happen exclusively through src/db/brand-profiles.ts, inside the same
+// transaction as the profile row, so a profile can never exist without its
+// version and no caller can hand in a hash that does not match the snapshot.
+//
+// snapshot is typed as the STORED shape, not the parsed one — same reasoning
+// as brand_profiles.fields: once BRAND_PROFILE_SCHEMA_VERSION moves, older
+// rows carry an older shape, so reads go through parseBrandProfileSnapshot.
+// It holds the PARSED field set though (defaults materialized): a run pins a
+// version (task 31) and must get the configuration as it was, not one that
+// re-resolves today's defaults at read time.
+export const brandProfileVersions = pgTable(
+  "brand_profile_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    brandProfileId: uuid("brand_profile_id")
+      .notNull()
+      .references(() => brandProfiles.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    snapshot: jsonb("snapshot").$type<BrandProfileSnapshotStored>().notNull(),
+    contentHash: text("content_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("brand_profile_versions_workspace_id_idx").on(table.workspaceId),
+    // The numbering guarantee: two concurrent saves computing the same next
+    // number cannot both land. Its leftmost column doubles as the per-profile
+    // lookup index, so there is deliberately no third index.
+    unique("brand_profile_versions_profile_version_uq").on(
+      table.brandProfileId,
+      table.version,
+    ),
+  ],
 );

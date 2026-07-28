@@ -11,6 +11,7 @@ import {
 } from "@/db/memberships";
 import { users } from "@/db/schema";
 import type { ScopedDb } from "@/db/scoped";
+import { emptyBrandProfileFields } from "@/lib/brand-profile/schema";
 
 import { createTestDb, type TestDbHandle } from "../helpers/db";
 import {
@@ -45,10 +46,20 @@ interface CollectionAccessors {
 // describe in this file covering the named methods — the shape assertion in
 // the completeness guards makes sure no namespace slips through with an
 // undeclared shape or an empty case set.
+//
+// A collection namespace may carry extraMethods beyond the standard surface
+// (task 19: brandProfiles.save). Those keep the generic runner AND demand
+// their own named cases, so a method can never arrive without isolation
+// coverage just because its namespace already had some.
 const COLLECTION_METHODS = ["create", "getById", "list"] as const;
 
 type EntityDeclaration = { table: string } & (
-  | { shape: "collection"; accessors: CollectionAccessors }
+  | {
+      shape: "collection";
+      accessors: CollectionAccessors;
+      extraMethods?: readonly string[];
+      extraCases?: readonly string[];
+    }
   | { shape: "singleton"; methods: readonly string[] }
   | { shape: "custom"; methods: readonly string[]; cases: readonly string[] }
 );
@@ -62,6 +73,25 @@ const entities: Record<string, EntityDeclaration> = {
       list: (scope) => scope.brandProfiles.list(),
       getById: (scope, id) => scope.brandProfiles.getById(id),
     },
+    // Task 19: the only write path for an existing profile. Covered by the
+    // hand-written "brandProfiles.save (scoped write)" describe below.
+    extraMethods: ["save"],
+    extraCases: [
+      "save refuses a foreign workspace's profile and writes nothing",
+    ],
+  },
+  // Append-only profile history (task 19); covered by the hand-written
+  // "brandProfileVersions (custom)" describe below. No create: versions are
+  // written exclusively as a side effect of a profile write.
+  brandProfileVersions: {
+    table: "brand_profile_versions",
+    shape: "custom",
+    methods: ["getById", "listByProfile"],
+    cases: [
+      "listByProfile never returns a foreign workspace's versions",
+      "getById returns null for a foreign workspace's version row",
+      "a save in one workspace creates no version in the other",
+    ],
   },
   runs: {
     table: "runs",
@@ -166,7 +196,7 @@ describe("suite completeness (forgetting guards)", () => {
       if (!actual) continue; // already reported by the namespace guard
       const expected =
         entry.shape === "collection"
-          ? [...COLLECTION_METHODS].sort()
+          ? [...COLLECTION_METHODS, ...(entry.extraMethods ?? [])].sort()
           : [...entry.methods].sort();
       if (actual.join(",") !== expected.join(",")) {
         problems.push(
@@ -180,6 +210,18 @@ describe("suite completeness (forgetting guards)", () => {
         problems.push(
           `${name}: custom entries must name at least one case and back it ` +
             `with a hand-written describe in this file.`,
+        );
+      }
+      if (
+        entry.shape === "collection" &&
+        (entry.extraMethods?.length ?? 0) > 0 &&
+        (entry.extraCases?.length ?? 0) === 0
+      ) {
+        problems.push(
+          `${name}: a collection with extraMethods [${(entry.extraMethods ?? []).join(", ")}] ` +
+            `must name at least one extraCase and back it with a hand-written ` +
+            `describe in this file. The generic runner only covers create, ` +
+            `getById and list.`,
         );
       }
     }
@@ -221,6 +263,99 @@ for (const [name, entry] of Object.entries(entities)) {
     });
   });
 }
+
+// The scoped write path of an existing profile (task 19). It is the only way
+// to change a profile row, so it is also the only place where a foreign
+// workspace could otherwise reach one.
+describe("brandProfiles.save (scoped write)", () => {
+  it("refuses a foreign workspace's profile and writes nothing", async () => {
+    const own = await seedTwoTenants(handle.db);
+    const profile = await own.a.scope.brandProfiles.create({
+      name: "Gehört A",
+    });
+
+    const result = await own.b.scope.brandProfiles.save({
+      brandProfileId: profile.id,
+      name: "Von B umbenannt",
+      description: null,
+      aktiv: false,
+      fields: emptyBrandProfileFields(),
+    });
+
+    expect(result).toEqual({ status: "not_found" });
+    expect((await own.a.scope.brandProfiles.getById(profile.id))?.name).toBe(
+      "Gehört A",
+    );
+    // Not even a version row leaked into B.
+    expect(
+      await own.b.scope.brandProfileVersions.listByProfile(profile.id),
+    ).toEqual([]);
+    expect(
+      (await own.a.scope.brandProfileVersions.listByProfile(profile.id)).map(
+        (entry) => entry.version,
+      ),
+    ).toEqual([1]);
+  });
+});
+
+// Custom entity: the append-only profile history (task 19). Fresh tenants so
+// the version lists start clean; cases build on each other in file order.
+describe("brandProfileVersions (custom isolation)", () => {
+  let ver: TwoTenants;
+  let profileA: string;
+  let profileB: string;
+
+  beforeAll(async () => {
+    ver = await seedTwoTenants(handle.db);
+    profileA = (await ver.a.scope.brandProfiles.create({ name: "Profil A" }))
+      .id;
+    profileB = (await ver.b.scope.brandProfiles.create({ name: "Profil B" }))
+      .id;
+  });
+
+  it("listByProfile never returns a foreign workspace's versions", async () => {
+    // Scope-blind lookup: B asking for A's profile id must get nothing, not
+    // A's history (the pattern of the scope-blind invites.get).
+    expect(await ver.b.scope.brandProfileVersions.listByProfile(profileA)).toEqual(
+      [],
+    );
+    const own = await ver.a.scope.brandProfileVersions.listByProfile(profileA);
+    expect(own).toHaveLength(1);
+    expect(own[0]?.workspaceId).toBe(ver.a.workspace.id);
+  });
+
+  it("getById returns null for a foreign workspace's version row", async () => {
+    const [versionA] = await ver.a.scope.brandProfileVersions.listByProfile(
+      profileA,
+    );
+    if (!versionA) throw new Error("version 1 missing");
+    expect(await ver.b.scope.brandProfileVersions.getById(versionA.id)).toBeNull();
+    expect(
+      (await ver.a.scope.brandProfileVersions.getById(versionA.id))?.version,
+    ).toBe(1);
+  });
+
+  it("a save in one workspace creates no version in the other", async () => {
+    await ver.a.scope.brandProfiles.save({
+      brandProfileId: profileA,
+      name: "Profil A, geändert",
+      description: null,
+      aktiv: true,
+      fields: emptyBrandProfileFields(),
+    });
+
+    expect(
+      (await ver.a.scope.brandProfileVersions.listByProfile(profileA)).map(
+        (entry) => entry.version,
+      ),
+    ).toEqual([2, 1]);
+    expect(
+      (await ver.b.scope.brandProfileVersions.listByProfile(profileB)).map(
+        (entry) => entry.version,
+      ),
+    ).toEqual([1]);
+  });
+});
 
 // Singleton entity: one invite row per workspace. Fresh tenants for this
 // describe so "B has no invite yet" holds regardless of other tests. The

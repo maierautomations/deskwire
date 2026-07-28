@@ -6,12 +6,23 @@
 // Typed against the generic PgDatabase (not a concrete driver type) so the
 // same helpers run against the Neon app client and the PGlite test client.
 import type { InferInsertModel } from "drizzle-orm";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
+import {
+  createProfileWithFirstVersion,
+  saveProfileWithVersion,
+  type SaveBrandProfileRowParams,
+} from "./brand-profiles";
 import { generateInviteToken, inviteExpiresAt } from "./invites";
 import * as schema from "./schema";
-import { brandProfiles, creditLedger, runs, workspaceInvites } from "./schema";
+import {
+  brandProfiles,
+  brandProfileVersions,
+  creditLedger,
+  runs,
+  workspaceInvites,
+} from "./schema";
 
 export type DbClient = PgDatabase<PgQueryResultHKT, typeof schema>;
 
@@ -21,6 +32,16 @@ export type NewBrandProfile = Omit<
   InferInsertModel<typeof brandProfiles>,
   "id" | "workspaceId" | "createdAt" | "updatedAt"
 >;
+
+// Re-exported so callers get the whole scoped surface from one module. Note
+// what the params do NOT contain: workspaceId, version number and content
+// hash come from the scope and from the save itself, never from a caller.
+export type {
+  BrandProfile,
+  BrandProfileVersion,
+  SaveBrandProfileRowParams,
+  SaveBrandProfileRowResult,
+} from "./brand-profiles";
 
 export type NewRun = Omit<
   InferInsertModel<typeof runs>,
@@ -59,16 +80,49 @@ export function scopedDb(db: DbClient, workspaceId: string) {
         return row ?? null;
       },
 
-      create: async (data: NewBrandProfile) => {
+      // Same signature and return value as before task 19 (the row), but now
+      // transactional: profile plus version 1. There is deliberately no bare
+      // update next to it — every write goes through save(), so a profile can
+      // never change without its history recording it (task 31 pins those
+      // versions).
+      create: (data: NewBrandProfile) =>
+        createProfileWithFirstVersion(db, workspaceId, data),
+
+      save: (params: SaveBrandProfileRowParams) =>
+        saveProfileWithVersion(db, workspaceId, params),
+    },
+
+    // Append-only profile history (task 19). No create: a version exists only
+    // as the side effect of a profile write, which is what makes "no profile
+    // without a version" structural instead of a rule someone must remember.
+    brandProfileVersions: {
+      getById: async (id: string) => {
         const [row] = await db
-          .insert(brandProfiles)
-          .values({ ...data, workspaceId })
-          .returning();
-        if (!row) {
-          throw new Error("brand profile insert returned no row");
-        }
-        return row;
+          .select()
+          .from(brandProfileVersions)
+          .where(
+            and(
+              eq(brandProfileVersions.id, id),
+              eq(brandProfileVersions.workspaceId, workspaceId),
+            ),
+          )
+          .limit(1);
+        return row ?? null;
       },
+
+      // Newest first: the editor shows the current version number (task 20a),
+      // and a history list reads top-down.
+      listByProfile: (brandProfileId: string) =>
+        db
+          .select()
+          .from(brandProfileVersions)
+          .where(
+            and(
+              eq(brandProfileVersions.workspaceId, workspaceId),
+              eq(brandProfileVersions.brandProfileId, brandProfileId),
+            ),
+          )
+          .orderBy(desc(brandProfileVersions.version)),
     },
 
     // The workspace's single invite link (phase-0 decision no. 22). Reads may

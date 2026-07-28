@@ -40,12 +40,16 @@ export {
 } from "./invites";
 export type { WorkspaceForUser } from "./memberships";
 export type {
+  BrandProfile,
+  BrandProfileVersion,
   CreditLedgerEntry,
   DbClient,
   NewBrandProfile,
   NewCreditLedgerEntry,
   NewRun,
   Run,
+  SaveBrandProfileRowParams,
+  SaveBrandProfileRowResult,
   ScopedDb,
 } from "./scoped";
 export { scopedDb } from "./scoped";
