@@ -1,6 +1,8 @@
 import {
+  boolean,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -10,9 +12,11 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
-// Relative import on purpose: drizzle-kit loads this file directly and its
-// resolver is not guaranteed to honor the "@/" tsconfig alias.
+// Relative imports on purpose: drizzle-kit loads this file directly and its
+// resolver is not guaranteed to honor the "@/" tsconfig alias. Both are
+// type-only, so this module stays free of runtime imports.
 import type { StripeSubscriptionStatus } from "../lib/billing/subscription-status";
+import type { BrandProfileFieldsInput } from "../lib/brand-profile/schema";
 
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -268,8 +272,12 @@ export const creditLedger = pgTable(
   (table) => [index("credit_ledger_workspace_id_idx").on(table.workspaceId)],
 );
 
-// Deliberate phase-0 stub: establishes the workspace-scoped table pattern.
-// Real brand profile fields (versions, editor) arrive in phase 1.
+// Real brand profile field set (task 18, phase-1 Vorgabe 5): ONE jsonb column,
+// with the Zod schema in src/lib/brand-profile/schema.ts as the single
+// enforcement boundary and `schema_version` inside the JSON as the ladder for
+// future shape changes (migrated on read, never by SQL). name and description
+// stay real columns: they are listed and sorted. Versioning of the whole object
+// arrives with task 19.
 export const brandProfiles = pgTable(
   "brand_profiles",
   {
@@ -279,6 +287,19 @@ export const brandProfiles = pgTable(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
+    // Typed as the Zod INPUT shape on purpose, not the parsed output: what is
+    // stored is not what a reader gets. The phase-0 stub rows contain exactly
+    // `{}` and only become a complete object by passing
+    // parseBrandProfileFields. Typing this as the output type would let
+    // `row.fields.pflichtelemente` type-check while being undefined at runtime.
+    fields: jsonb("fields")
+      .$type<BrandProfileFieldsInput>()
+      .notNull()
+      .default({}),
+    // Deactivated profiles stay fully readable (runs pin versions and articles
+    // show which one produced them) but drop out of the briefing picker
+    // (task 22). Default true: every profile that exists today is active.
+    aktiv: boolean("aktiv").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -43,6 +43,13 @@
       "when": 1785185621951,
       "tag": "0005_jittery_enchantress",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785272504484,
+      "tag": "0006_funny_lilandra",
+      "breakpoints": true
     }
   ]
 }
