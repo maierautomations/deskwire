@@ -18,8 +18,10 @@ const initialState: CreateBrandProfileFormState = { status: "idle" };
 // Expected failures render inline in the functional error color and echo the
 // typed values; success renders nothing here — the revalidated list shows the
 // new entry. The maxLength attributes are progressive-enhancement comfort;
-// the truth is the Zod boundary in @/lib/brand-profile (not imported here:
-// its default deps would pull the server db client into the client bundle).
+// the truth is the Zod boundary in @/lib/brand-profile/create (not imported
+// here: its default deps would pull the server db client into the client
+// bundle — the module is deliberately reachable only by its explicit path,
+// there is no barrel that could make that import look harmless).
 export function CreateBrandProfileForm({
   workspaceId,
 }: {

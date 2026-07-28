@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
-import { createBrandProfileForMember } from "@/lib/brand-profile";
+import { createBrandProfileForMember } from "@/lib/brand-profile/create";
 
 // Not exported: a "use server" module may only export async functions
 // (task-10b finding).

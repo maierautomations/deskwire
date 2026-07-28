@@ -10,7 +10,7 @@ import {
   createBrandProfileForMember,
   formatBrandProfileDate,
   type CreateBrandProfileDeps,
-} from "@/lib/brand-profile";
+} from "@/lib/brand-profile/create";
 import { requireWorkspaceMembership } from "@/lib/workspace";
 
 import { createTestDb, type TestDbHandle } from "../helpers/db";

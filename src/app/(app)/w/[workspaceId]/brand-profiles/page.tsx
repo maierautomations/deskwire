@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { getScopedDb } from "@/db";
-import { formatBrandProfileDate } from "@/lib/brand-profile";
+import { formatBrandProfileDate } from "@/lib/brand-profile/create";
 import { requireWorkspaceMembership } from "@/lib/workspace";
 
 import { CreateBrandProfileForm } from "./create-brand-profile-form";
