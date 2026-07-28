@@ -4,13 +4,15 @@ import type { Membership } from "@/db";
 import { findMembership } from "@/db/memberships";
 import { scopedDb } from "@/db/scoped";
 import {
-  BRAND_PROFILE_DESCRIPTION_INVALID_MESSAGE,
-  BRAND_PROFILE_FORBIDDEN_MESSAGE,
-  BRAND_PROFILE_NAME_INVALID_MESSAGE,
   createBrandProfileForMember,
   formatBrandProfileDate,
   type CreateBrandProfileDeps,
 } from "@/lib/brand-profile/create";
+import {
+  BRAND_PROFILE_DESCRIPTION_INVALID_MESSAGE,
+  BRAND_PROFILE_FORBIDDEN_MESSAGE,
+  BRAND_PROFILE_NAME_INVALID_MESSAGE,
+} from "@/lib/brand-profile/input";
 import { requireWorkspaceMembership } from "@/lib/workspace";
 
 import { createTestDb, type TestDbHandle } from "../helpers/db";
