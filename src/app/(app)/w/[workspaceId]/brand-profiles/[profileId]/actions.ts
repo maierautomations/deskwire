@@ -76,5 +76,8 @@ export async function saveBrandProfileAction(
     // The list shows the name, which this save may have changed.
     revalidatePath(`/w/${workspaceId}/brand-profiles`);
   }
-  return toEditorFormState(result, read.values);
+  // read.notes carries what the normalization removed from what the user
+  // typed (task 20b). Sections without a normalization step send an empty
+  // list, so the 20a forms are unaffected.
+  return toEditorFormState(result, read.values, read.notes);
 }

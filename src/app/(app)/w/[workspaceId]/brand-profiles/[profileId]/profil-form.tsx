@@ -12,30 +12,27 @@ import { SaveRow } from "./save-row";
 const initialState: BrandProfileEditorFormState = { status: "idle" };
 
 // Section 1: the identity of the profile. It owns name, description and
-// aktiv, and its patch touches no field group at all — section 2 (and every
-// section task 20b adds) can save at the same time without overwriting it.
+// aktiv, and its patch touches no field group at all — every one of the four
+// sections task 20b adds can save at the same time without overwriting it.
 //
-// maxLength is progressive-enhancement comfort; the numbers arrive as props
-// straight from the Zod boundary's constants, so this markup holds no second
-// set of numbers AND stays free of lib imports. Importing the constants
-// directly would drag zod into the client bundle — measured, not assumed: it
-// added a 284 KB chunk that the build has none of otherwise.
+// No maxLength on either field (task 20b): the attribute truncates a paste
+// silently, so an over-long name would arrive shortened and valid instead of
+// being rejected with a sentence. The Zod boundary decides, and this markup
+// holds no numbers at all — which also keeps it free of lib imports, since
+// importing the constants would drag zod into the client bundle (measured in
+// task 20a: a 284 KB chunk the build has none of otherwise).
 export function ProfilForm({
   workspaceId,
   profileId,
   name,
   description,
   aktiv,
-  nameMaxLength,
-  descriptionMaxLength,
 }: {
   workspaceId: string;
   profileId: string;
   name: string;
   description: string;
   aktiv: boolean;
-  nameMaxLength: number;
-  descriptionMaxLength: number;
 }) {
   const [state, formAction, pending] = useActionState(
     saveBrandProfileAction,
@@ -65,7 +62,6 @@ export function ProfilForm({
             name="name"
             type="text"
             required
-            maxLength={nameMaxLength}
             className="h-9"
             defaultValue={values.name ?? name}
             aria-invalid={fieldErrors.name ? true : undefined}
@@ -92,7 +88,6 @@ export function ProfilForm({
             id="brand-profile-description"
             name="description"
             type="text"
-            maxLength={descriptionMaxLength}
             className="h-9"
             defaultValue={values.description ?? description}
             aria-invalid={fieldErrors.description ? true : undefined}
@@ -119,7 +114,10 @@ export function ProfilForm({
               id="brand-profile-aktiv"
               name="aktiv"
               type="checkbox"
-              defaultChecked={aktiv}
+              // React restores an uncontrolled checkbox to defaultChecked on
+              // re-render, so a rejected save would drop a freshly changed
+              // tick unless the value travels back in the echo (task 20b).
+              defaultChecked={"aktiv" in values ? values.aktiv === "on" : aktiv}
               className="size-4 rounded-sm border border-input accent-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               aria-describedby="brand-profile-aktiv-hint"
             />

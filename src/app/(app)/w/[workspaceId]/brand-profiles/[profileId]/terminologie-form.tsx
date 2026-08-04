@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type {
   BrandProfileEditorFormState,
-  BrandProfileFreetextField,
+  BrandProfileTermField,
 } from "@/lib/brand-profile/editor";
 
 import { saveBrandProfileAction } from "./actions";
@@ -14,21 +14,15 @@ import { SaveRow } from "./save-row";
 
 const initialState: BrandProfileEditorFormState = { status: "idle" };
 
-// Section 2: the six model-checked free text groups. The descriptors arrive
-// as props from the server page — that keeps this component's imports down to
-// react, the ui primitives and the action, so nothing with a database edge can
-// reach the client bundle (the bundle trap from task 13).
+// Section 5: the two term lists, one term per line.
 //
-// Deliberately without live character counters: six counters would be
-// decoration on every keystroke, and the inline message names limit and actual
-// length when a paste overshoots (Chanel rule). The one section that does
-// count is Beispieltexte, where a whole article arrives in one paste.
-//
-// No maxLength either (task 20b): the attribute truncates a paste silently,
-// and the message about the overshoot could then never appear because the
-// field could not hold it. The Zod boundary in saveBrandProfile is the only
-// truth, and a rejected text stays in the field in full.
-export function FreitextForm({
+// The textarea is keyed by what is STORED, so a save that removed duplicates
+// or blank lines re-mounts the field and shows the stored result. Together
+// with the note next to the version line that is the whole anti-silence
+// contract: the user is told what was removed and sees it (brand book 6.1).
+// While a save is rejected the stored value does not change, the field does
+// not re-mount, and every typed line survives.
+export function TerminologieForm({
   workspaceId,
   profileId,
   fields,
@@ -36,7 +30,7 @@ export function FreitextForm({
 }: {
   workspaceId: string;
   profileId: string;
-  fields: readonly BrandProfileFreetextField[];
+  fields: readonly BrandProfileTermField[];
   values: Record<string, string>;
 }) {
   const [state, formAction, pending] = useActionState(
@@ -45,47 +39,46 @@ export function FreitextForm({
   );
   const fieldErrors = state.status === "invalid" ? state.fieldErrors : {};
   const echoed = state.status === "invalid" ? state.values : {};
-  const current = (key: string) => echoed[key] ?? values[key] ?? "";
-  const empty = fields.every((field) => current(field.key) === "");
+  const stored = (key: string) => values[key] ?? "";
+  const empty = fields.every((field) => stored(field.key) === "");
 
   return (
     <section className="flex flex-col gap-4 border-t border-line pt-6">
       <div className="flex flex-col gap-1.5">
-        <h2 className="font-display text-lg font-semibold">Stil und Regeln</h2>
+        <h2 className="font-display text-lg font-semibold">Terminologie</h2>
         <p className="max-w-prose text-sm text-ink-soft">
-          Was du hier festlegst, geht in jeden Artikel dieses Profils ein und
-          wird geprüft.
+          Ein Begriff pro Zeile. Doppelte Zeilen und Leerzeilen entfernt das
+          System beim Speichern. Was danach im Feld steht, ist gespeichert.
         </p>
         {empty ? (
           <p className="max-w-prose text-sm text-ink-soft">
-            Noch nichts hinterlegt. Jedes Feld ist freiwillig, geprüft wird nur,
-            was du festlegst.
+            Noch keine Begriffe hinterlegt.
           </p>
         ) : null}
       </div>
 
       <form action={formAction} className="flex flex-col gap-6">
-        <input type="hidden" name="section" value="freetext" />
+        <input type="hidden" name="section" value="terms" />
         <input type="hidden" name="workspaceId" value={workspaceId} />
         <input type="hidden" name="profileId" value={profileId} />
 
         {fields.map((field) => {
           const error = fieldErrors[field.key];
-          const hintId = `brand-profile-${field.key}-hint`;
-          const errorId = `brand-profile-${field.key}-error`;
+          const inputId = `brand-profile-${field.key}`;
+          const hintId = `${inputId}-hint`;
+          const errorId = `${inputId}-error`;
           return (
             <div key={field.key} className="flex flex-col gap-2">
-              <Label htmlFor={`brand-profile-${field.key}`}>
-                {field.label}
-              </Label>
+              <Label htmlFor={inputId}>{field.label}</Label>
               <p id={hintId} className="max-w-prose text-xs text-ink-soft">
                 {field.hint}
               </p>
               <Textarea
-                id={`brand-profile-${field.key}`}
+                key={stored(field.key)}
+                id={inputId}
                 name={field.key}
                 rows={field.rows}
-                defaultValue={current(field.key)}
+                defaultValue={echoed[field.key] ?? stored(field.key)}
                 aria-invalid={error ? true : undefined}
                 aria-describedby={error ? `${hintId} ${errorId}` : hintId}
               />

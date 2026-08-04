@@ -5,17 +5,26 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import { getScopedDb } from "@/db";
-import { BRAND_PROFILE_FREETEXT_FIELDS } from "@/lib/brand-profile/editor";
-import { formatBrandProfileVersionLine } from "@/lib/brand-profile/format";
 import {
-  BRAND_PROFILE_DESCRIPTION_MAX_LENGTH,
-  BRAND_PROFILE_NAME_MAX_LENGTH,
-} from "@/lib/brand-profile/input";
+  BRAND_PROFILE_BEISPIELTEXTE_CONFIG,
+  BRAND_PROFILE_FORMAT_FIELDS,
+  BRAND_PROFILE_FORMAT_FLAG_HINT,
+  BRAND_PROFILE_FORMAT_FLAG_KEY,
+  BRAND_PROFILE_FORMAT_FLAG_LABEL,
+  BRAND_PROFILE_FREETEXT_FIELDS,
+  BRAND_PROFILE_PFLICHTELEMENTE_CONFIG,
+  BRAND_PROFILE_TERM_FIELDS,
+} from "@/lib/brand-profile/editor";
+import { formatBrandProfileVersionLine } from "@/lib/brand-profile/format";
 import { parseBrandProfileFields } from "@/lib/brand-profile/schema";
 import { requireWorkspaceMembership } from "@/lib/workspace";
 
+import { BeispieltexteForm } from "./beispieltexte-form";
+import { FormatregelnForm } from "./formatregeln-form";
 import { FreitextForm } from "./freitext-form";
+import { PflichtelementeForm } from "./pflichtelemente-form";
 import { ProfilForm } from "./profil-form";
+import { TerminologieForm } from "./terminologie-form";
 
 export const metadata: Metadata = {
   title: "Marken-Profil",
@@ -23,9 +32,10 @@ export const metadata: Metadata = {
 
 const profileIdSchema = z.uuid();
 
-// The brand profile editor (task 20a): name, description, aktiv and the six
-// free text groups. The structured groups (pflichtelemente, formatregeln,
-// terms, example texts) arrive in task 20b as further sections.
+// The brand profile editor: name, description, aktiv and the six free text
+// groups (task 20a), plus the four structured groups (task 20b). Six sections,
+// six forms, ONE server action — each form has its own useActionState, and a
+// section only ever patches the groups it owns.
 //
 // Layouts and pages render in parallel, so this page never relies on the
 // w-layout's membership check having finished — it guards itself
@@ -83,17 +93,16 @@ export default async function BrandProfilePage({
         </Link>
       </div>
 
-      {/* Limits travel as props, never as a client-side import: the constants
-          live next to the Zod schemas, and importing them would pull zod into
-          the client bundle. */}
+      {/* Descriptors, limits and enum values travel as props, never as a
+          client-side import: the constants live next to the Zod schemas, and
+          importing them would pull zod into the client bundle (measured in
+          task 20a). */}
       <ProfilForm
         workspaceId={workspaceId}
         profileId={profile.id}
         name={profile.name}
         description={profile.description ?? ""}
         aktiv={profile.aktiv}
-        nameMaxLength={BRAND_PROFILE_NAME_MAX_LENGTH}
-        descriptionMaxLength={BRAND_PROFILE_DESCRIPTION_MAX_LENGTH}
       />
 
       <FreitextForm
@@ -106,6 +115,49 @@ export default async function BrandProfilePage({
             fields[field.key],
           ]),
         )}
+      />
+
+      <PflichtelementeForm
+        workspaceId={workspaceId}
+        profileId={profile.id}
+        rows={fields.pflichtelemente}
+        config={BRAND_PROFILE_PFLICHTELEMENTE_CONFIG}
+      />
+
+      <FormatregelnForm
+        workspaceId={workspaceId}
+        profileId={profile.id}
+        fields={BRAND_PROFILE_FORMAT_FIELDS}
+        values={Object.fromEntries(
+          BRAND_PROFILE_FORMAT_FIELDS.map((field) => [
+            field.key,
+            // null is "not configured" and renders as an empty field.
+            fields.formatregeln[field.key]?.toString() ?? "",
+          ]),
+        )}
+        flagKey={BRAND_PROFILE_FORMAT_FLAG_KEY}
+        flagLabel={BRAND_PROFILE_FORMAT_FLAG_LABEL}
+        flagHint={BRAND_PROFILE_FORMAT_FLAG_HINT}
+        flagValue={fields.formatregeln.keine_relativen_zeitangaben}
+      />
+
+      <TerminologieForm
+        workspaceId={workspaceId}
+        profileId={profile.id}
+        fields={BRAND_PROFILE_TERM_FIELDS}
+        values={Object.fromEntries(
+          BRAND_PROFILE_TERM_FIELDS.map((field) => [
+            field.key,
+            fields[field.key].join("\n"),
+          ]),
+        )}
+      />
+
+      <BeispieltexteForm
+        workspaceId={workspaceId}
+        profileId={profile.id}
+        texts={fields.beispieltexte}
+        config={BRAND_PROFILE_BEISPIELTEXTE_CONFIG}
       />
     </div>
   );

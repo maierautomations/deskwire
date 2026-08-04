@@ -76,7 +76,14 @@ describe("readEditorSection: profile", () => {
       rawAktiv: true,
       rawFields: {},
     });
-    expect(read.values).toEqual({ name: "  Hausstil  ", description: " Kurz " });
+    expect(read.values).toEqual({
+      name: "  Hausstil  ",
+      description: " Kurz ",
+      // The checkbox echoes too (task 20b): React restores an uncontrolled
+      // checkbox to its defaultChecked on re-render, so a rejected save would
+      // otherwise drop a freshly changed tick.
+      aktiv: "on",
+    });
   });
 
   it("passes a false checkbox through as false, never as absent", () => {
@@ -106,8 +113,26 @@ describe("readEditorSection: profile", () => {
         name: BRAND_PROFILE_NAME_INVALID_MESSAGE,
         description: BRAND_PROFILE_DESCRIPTION_INVALID_MESSAGE,
       },
-      values: { name: "   ", description: "y".repeat(501) },
+      values: { name: "   ", description: "y".repeat(501), aktiv: "on" },
     });
+  });
+
+  it("echoes the checkbox through a rejection, in both directions", () => {
+    // Found in the 20b walkthrough: without this the tick a user just set is
+    // gone after an unrelated field error, and the next save writes the old
+    // value without ever saying so.
+    const ticked = readEditorSection("profile", formData({ name: "   " }), {
+      aktiv: true,
+    });
+    const unticked = readEditorSection("profile", formData({ name: "   " }), {
+      aktiv: false,
+    });
+
+    expect(ticked.ok).toBe(false);
+    expect(unticked.ok).toBe(false);
+    if (ticked.ok || unticked.ok) return;
+    expect(ticked.values.aktiv).toBe("on");
+    expect(unticked.values.aktiv).toBe("");
   });
 });
 
@@ -301,16 +326,18 @@ describe("toEditorFormState", () => {
   const values = { name: "Hausstil" };
 
   it("reports a written version", () => {
+    // notes are what a section's normalization removed (task 20b); the 20a
+    // sections normalize nothing and send an empty list.
     expect(
       toEditorFormState({ status: "saved", version: 4, deduped: false }, values),
-    ).toEqual({ status: "saved", version: 4, deduped: false });
+    ).toEqual({ status: "saved", version: 4, deduped: false, notes: [] });
   });
 
   it("reports a deduplicated save as its own state", () => {
     // Not silence: the editor says the version stayed where it is.
     expect(
       toEditorFormState({ status: "saved", version: 3, deduped: true }, values),
-    ).toEqual({ status: "saved", version: 3, deduped: true });
+    ).toEqual({ status: "saved", version: 3, deduped: true, notes: [] });
   });
 
   it("gives the version conflict its German sentence", () => {

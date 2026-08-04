@@ -10,7 +10,9 @@ import type { BrandProfileEditorFormState } from "@/lib/brand-profile/editor";
 //
 // A deduplicated save says so out loud: nothing was written and the version
 // number stays where it is, and a form that answered silently would be the
-// silent state brand book 6.1 forbids.
+// silent state brand book 6.1 forbids. The same reason carries the notes: a
+// section whose normalization dropped duplicates or blank lines says how many,
+// right next to the version it wrote.
 export function SaveRow({
   state,
   pending,
@@ -25,11 +27,18 @@ export function SaveRow({
       </Button>
 
       {state.status === "saved" ? (
-        <p role="status" className="font-mono text-xs text-ink-soft">
-          {state.deduped
-            ? `Keine Änderung. Version ${state.version} bleibt.`
-            : `Gespeichert. Version ${state.version}.`}
-        </p>
+        <div role="status" className="flex flex-col gap-1">
+          <p className="font-mono text-xs text-ink-soft">
+            {state.deduped
+              ? `Keine Änderung. Version ${state.version} bleibt.`
+              : `Gespeichert. Version ${state.version}.`}
+          </p>
+          {state.notes.map((note) => (
+            <p key={note} className="font-mono text-xs text-ink-soft">
+              {note}
+            </p>
+          ))}
+        </div>
       ) : null}
 
       {state.status === "invalid" ||

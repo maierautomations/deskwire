@@ -19,21 +19,20 @@ const initialState: CreateBrandProfileFormState = { status: "idle" };
 // typed values; success renders nothing here — the revalidated list shows the
 // new entry.
 //
-// The maxLength attributes are progressive-enhancement comfort and arrive as
-// props from the Zod boundary's constants: no second set of numbers in this
-// markup, and no lib import either. Importing them would pull zod (from the
-// schema modules) into the client bundle, and importing the create logic
-// would pull the server db client — measured after the build, not assumed
-// (task 20a); there is no barrel that could make such an import look
-// harmless.
+// No maxLength on either field (task 20b, same rule as in the editor): the
+// attribute truncates a paste silently, so an over-long name would arrive
+// shortened and valid instead of being rejected with a sentence, and the
+// message naming the limit could never appear. The Zod boundary decides.
+//
+// This markup therefore holds no numbers at all, which also keeps it free of
+// lib imports: importing them would pull zod (from the schema modules) into
+// the client bundle, and importing the create logic would pull the server db
+// client — measured after the build, not assumed (task 20a); there is no
+// barrel that could make such an import look harmless.
 export function CreateBrandProfileForm({
   workspaceId,
-  nameMaxLength,
-  descriptionMaxLength,
 }: {
   workspaceId: string;
-  nameMaxLength: number;
-  descriptionMaxLength: number;
 }) {
   const [state, formAction, pending] = useActionState(
     createBrandProfileAction,
@@ -50,7 +49,6 @@ export function CreateBrandProfileForm({
           name="name"
           type="text"
           required
-          maxLength={nameMaxLength}
           placeholder="Hausstil Print"
           className="h-9"
           defaultValue={state.status === "error" ? state.name : undefined}
@@ -68,7 +66,6 @@ export function CreateBrandProfileForm({
           id="brand-profile-description"
           name="description"
           type="text"
-          maxLength={descriptionMaxLength}
           placeholder="Tonalität und Regeln für Print-Artikel"
           className="h-9"
           defaultValue={

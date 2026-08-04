@@ -5,10 +5,6 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getScopedDb } from "@/db";
 import { formatBrandProfileDate } from "@/lib/brand-profile/format";
-import {
-  BRAND_PROFILE_DESCRIPTION_MAX_LENGTH,
-  BRAND_PROFILE_NAME_MAX_LENGTH,
-} from "@/lib/brand-profile/input";
 import { requireWorkspaceMembership } from "@/lib/workspace";
 
 import { CreateBrandProfileForm } from "./create-brand-profile-form";
@@ -98,11 +94,7 @@ export default async function BrandProfilesPage({
             du danach im Profil fest.
           </p>
         </div>
-        <CreateBrandProfileForm
-          workspaceId={workspaceId}
-          nameMaxLength={BRAND_PROFILE_NAME_MAX_LENGTH}
-          descriptionMaxLength={BRAND_PROFILE_DESCRIPTION_MAX_LENGTH}
-        />
+        <CreateBrandProfileForm workspaceId={workspaceId} />
       </section>
     </div>
   );

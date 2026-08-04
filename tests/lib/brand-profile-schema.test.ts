@@ -7,6 +7,7 @@ import {
   brandProfileWorstCaseChars,
   casefoldTerm,
   emptyBrandProfileFields,
+  inspectTermList,
   parseBrandProfileFields,
   PFLICHTELEMENT_POSITIONS,
   type BrandProfileFields,
@@ -446,6 +447,67 @@ describe("brand profile fields: complete profile", () => {
   it("is idempotent", () => {
     const once = parseBrandProfileFields(FULL_BRAND_PROFILE_FIELDS);
     expect(parseBrandProfileFields(once)).toEqual(once);
+  });
+});
+
+describe("inspectTermList", () => {
+  // The editor reports what the normalization removed and which line is too
+  // long (task 20b). This is the same implementation the schema transform
+  // uses, and the first test is the guard that keeps it that way: whatever the
+  // report says was kept is exactly what the schema stores.
+  it("agrees with what the schema actually stores", () => {
+    const lines = ["Kursziel", "", "kursziel", "Geheimtipp", "  Kursziel  "];
+
+    const report = inspectTermList(lines);
+    const stored = brandProfileFieldsSchema.parse({
+      verbotene_begriffe: lines,
+    }).verbotene_begriffe;
+
+    expect(report.terms).toEqual(stored);
+    expect(stored).toEqual(["Kursziel", "Geheimtipp"]);
+  });
+
+  it("numbers the entries by raw line, blanks and duplicates included", () => {
+    const report = inspectTermList(["Kursziel", "", "kursziel", "Geheimtipp"]);
+
+    expect(report.entries).toEqual([
+      { line: 1, term: "Kursziel", status: "kept" },
+      { line: 2, term: "", status: "blank" },
+      { line: 3, term: "kursziel", status: "duplicate" },
+      { line: 4, term: "Geheimtipp", status: "kept" },
+    ]);
+  });
+
+  it("flags an over-long term without dropping it", () => {
+    const long = "x".repeat(BRAND_PROFILE_LIMITS.begriff + 1);
+    const report = inspectTermList(["ok", long]);
+
+    // It stays in `terms` and the schema rejects it there: too long is
+    // rejected, never truncated.
+    expect(report.terms).toEqual(["ok", long]);
+    expect(report.entries[1].status).toBe("too_long");
+    expect(
+      brandProfileFieldsSchema.safeParse({ verbotene_begriffe: ["ok", long] })
+        .success,
+    ).toBe(false);
+  });
+
+  it("drops a duplicate before it is ever measured", () => {
+    // Mirrors the schema order exactly: blank, then duplicate, then length.
+    const long = "x".repeat(BRAND_PROFILE_LIMITS.begriff + 1);
+    const report = inspectTermList([long, long.toUpperCase()]);
+
+    expect(report.entries.map((entry) => entry.status)).toEqual([
+      "too_long",
+      "duplicate",
+    ]);
+  });
+
+  it("shapes the term the way the stored list does", () => {
+    const report = inspectTermList(["  Anleger    sollten   jetzt  "]);
+
+    expect(report.entries[0].term).toBe("Anleger sollten jetzt");
+    expect(report.terms).toEqual(["Anleger sollten jetzt"]);
   });
 });
 
